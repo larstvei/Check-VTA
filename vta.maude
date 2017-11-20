@@ -1,0 +1,85 @@
+fmod NAME is
+    pr QID .
+
+    sort Name .
+    subsort Qid < Name .
+endfm
+
+fmod CAPABILITY is
+    pr NAME .
+
+    sort Capability .
+
+    ops c : -> Capability .
+    ops in out open : Name -> Capability .
+endfm
+
+mod TIMED-PROCESS is
+    pr INT .
+    pr RAT .
+    pr BOOL .
+    pr CAPABILITY .
+
+    sort Clock .
+    sort Tick .
+
+    op tick : -> Tick .
+
+    sort TimedProcess .
+
+    sort Servable .
+    subsort TimedProcess Name < Servable .
+
+    vars S T : Servable .
+    op empty : -> Servable .
+    op _,_ : Servable Servable -> Servable [assoc comm id: empty prec 30] .
+    eq S, S = S .
+
+    op _\_ : Servable Servable -> Servable [prec 100] .
+    eq T, S \ S = T .
+    eq T \ S = T [owise] .
+
+    op in : Servable Servable -> Bool .
+    eq in(S, (S, T)) = true .
+    eq in(S, T) = false [owise] .
+
+    op dead : -> TimedProcess [ctor] .
+    op _|_ : TimedProcess TimedProcess -> TimedProcess [id: dead assoc comm prec 90] .
+    op _._ : Capability TimedProcess -> TimedProcess [prec 80] .
+    op _[_|_] : Name Clock TimedProcess -> TimedProcess [prec 70] .
+
+    op clock : Nat Nat Nat Rat Servable Servable -> Clock .
+
+    vars N M K : Name .
+    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars Speed SpdN SpdM SpdK : Rat .
+    vars Cl Cl1 Cl2 Cl3 : Clock .
+    var Ca : Capability .
+    vars P Q R U : TimedProcess .
+    vars Served Unserved : Servable .
+    vars SrvN SrvM SrvK UnSrvN UnSrvM UnSrvK : Servable .
+
+    op barb : TimedProcess -> Servable .
+    eq barb(Ca . P | Q) = barb(Q) .
+    eq barb(N[Cl | P] | Q) = N, barb(Q) .
+    eq barb(P) = empty [owise] .
+
+    crl [open] :
+        M[clock(CM1, CM2, CM3, Speed, Served, Unserved)
+          | open(N) . P | N[Cl | R] | Q]
+      =>
+        M[clock(CM1, CM2, CM3, Speed, S, T) | P | Q | R]
+      if  S := (Served \ N) /\
+          T := (Unserved \ N), barb(P), barb(R) /\
+          in(N, (Served, Unserved)) .
+
+    crl [in] :
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK)
+          | N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | in(M) . P | Q]
+          | M[clock(CM1, CM2, CM3, SpdM, SrvM, UnSrvM) | R] | U]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, (SrvK \ N), (UnSrvK \ N))
+          | M[clock(CM1, CM2, CM3, SpdM, SrvM, (UnSrvM, N)) | R |
+            N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]] | U]
+      if  in(N, (SrvK, UnSrvK)) .
+endm
