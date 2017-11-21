@@ -55,6 +55,8 @@ mod TIMED-PROCESS is
 
     sort TimedProcess .
 
+    subsort Tick < TimedProcess .
+
     sort Servable .
     subsort TimedProcess Name < Servable .
 
@@ -66,6 +68,10 @@ mod TIMED-PROCESS is
     op _\_ : Servable Servable -> Servable [prec 100] .
     eq T, S \ S = T .
     eq T \ S = T [owise] .
+
+    op isEmpty : Servable -> Bool .
+    eq isEmpty(empty) = true .
+    eq isEmpty(S) = false [owise] .
 
     op in : Servable Servable -> Bool .
     eq in(S, (S, T)) = true .
@@ -110,4 +116,43 @@ mod TIMED-PROCESS is
           | M[clock(CM1, CM2, CM3, SpdM, SrvM, (UnSrvM, N)) | R |
             N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]] | U]
       if  in(N, (SrvK, UnSrvK)) .
+
+    crl [out] :
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK)
+          | M[clock(CM1, CM2, CM3, SpdM, SrvM, UnSrvM) | R |
+            N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | out(M) . P | Q]] | U]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, (UnSrvK, N))
+          | N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]
+          | M[clock(CM1, CM2, CM3, SpdM, (SrvM \ N), (UnSrvM \ N)) | R] | U]
+      if  in(N, (SrvM, UnSrvM)) .
+
+    crl [consumption] :
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | c . P | R]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, (UnSrvK, (c . P))) | R]
+      if SpdK > 0 .
+
+    rl [empty]:
+        K[clock(CK1, 0, 0, SpdK, empty, empty) | tick | R]
+      =>
+        K[clock(CK1 + 1, 0, 0, SpdK, empty, empty) | R] .
+
+    crl [tick]:
+        K[clock(CK1, 0, 0, SpdK, SrvK, UnSrvK) | tick | R]
+      =>
+        K[clock(CK1 + 1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
+      if  CK2 CK3 := speed(SpdK) /\ not isEmpty(SrvK, UnSrvK) .
+
+    crl [new-round] :
+        K[clock(CK1, CK2, CK3, SpdK, empty, UnSrvK) | R]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, empty) | R]
+        if not isEmpty(UnSrvK) .
+
+    crl [tock1] :
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
+        if CK2 > 0 /\  .
 endm
