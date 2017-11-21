@@ -14,10 +14,38 @@ fmod CAPABILITY is
     ops in out open : Name -> Capability .
 endfm
 
+fmod EGYPTIAN is
+    pr NAT .
+    pr RAT .
+    pr LIST{Rat} .
+
+    vars X Y Z : Int .
+
+    op _mod_ : Int Int -> Int .
+    eq X mod Y = Y + X rem Y .
+
+    op egyptian : Rat -> List{Rat} .
+    eq egyptian(X) = X .
+    eq egyptian(1 / X) = 1 / X .
+    ceq egyptian(X / Y) = (1 / Z) egyptian((- Y mod X) / (Y * Z))
+      if Z := ceiling(Y / X) [owise] .
+
+    var L : List{Rat} .
+    var R : Rat .
+
+    op speed : Rat -> List{Rat} .
+    eq speed(R) = speed'(egyptian(R), 0) .
+
+    op speed' : List{Rat} Nat -> List{Rat} .
+    eq speed'(1 L, Y) = speed'(L, Y + 1) .
+    eq speed'(L, Y) = Y size(L) [owise] .
+endfm
+
 mod TIMED-PROCESS is
     pr INT .
     pr RAT .
     pr BOOL .
+    pr EGYPTIAN .
     pr CAPABILITY .
 
     sort Clock .
