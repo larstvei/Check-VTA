@@ -73,9 +73,9 @@ mod TIMED-PROCESS is
     eq isEmpty(empty) = true .
     eq isEmpty(S) = false [owise] .
 
-    op in : Servable Servable -> Bool .
-    eq in(S, (S, T)) = true .
-    eq in(S, T) = false [owise] .
+    op _isIn_ : Servable Servable -> Bool .
+    eq S isIn (S, T) = true .
+    eq S isIn T = false [owise] .
 
     op dead : -> TimedProcess [ctor] .
     op _|_ : TimedProcess TimedProcess -> TimedProcess [id: dead assoc comm prec 90] .
@@ -105,7 +105,7 @@ mod TIMED-PROCESS is
         M[clock(CM1, CM2, CM3, Speed, S, T) | P | Q | R]
       if  S := (Served \ N) /\
           T := (Unserved \ N), barb(P), barb(R) /\
-          in(N, (Served, Unserved)) .
+          N isIn (Served, Unserved) .
 
     crl [in] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
@@ -115,7 +115,7 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, (UnSrvK \ N), (SrvK \ N))
           | M[clock(CM1, CM2, CM3, SpdM, SrvM, (UnSrvM, N)) | R |
             N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]] | U]
-      if  in(N, (UnSrvK, SrvK)) .
+      if  N isIn (UnSrvK, SrvK) .
 
     crl [out] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
@@ -125,7 +125,7 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N))
           | N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]
           | M[clock(CM1, CM2, CM3, SpdM, (SrvM \ N), (UnSrvM \ N)) | R] | U]
-      if  in(N, (SrvM, UnSrvM)) .
+      if  N isIn (SrvM, UnSrvM) .
 
     crl [consumption] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | c . P | R]
