@@ -98,6 +98,10 @@ mod TIMED-PROCESS is
     eq barb(N[Cl | P] | Q) = N, barb(Q) .
     eq barb(P) = empty [owise] .
 
+    op getConsume : Servable -> Servable .
+    eq getConsume((c . P), Unserved) = c . P .
+    eq getConsume(Unserved) = empty [owise] .
+
     crl [open] :
         M[clock(CM1, CM2, CM3, Speed, Served, Unserved)
           | open(N) . P | N[Cl | R] | Q]
@@ -153,8 +157,9 @@ mod TIMED-PROCESS is
     crl [tock1] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
-        if CK2 > 0 /\  .
+        K[clock(CK1, CK2 - 1, CK3, SpdK, UnSrvN, SrvK) | R | P]
+      if  CK2 > 0 /\ (c . P) := getConsume(UnSrvK) /\
+          UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 endm
 
 --- Examples
@@ -177,3 +182,5 @@ rew 'k[clock(0,0,0,1, empty, empty) | tick] .
 rew 'k[clock(0,0,0,1, 'n, empty) | tick] .
 
 rew 'k[clock(0,0,0,1, empty, 'n) | tick] .
+
+rew 'k[clock(0,1,0,1, (c . P:TimedProcess), 'n) | dead] .
