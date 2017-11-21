@@ -156,3 +156,24 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
         if CK2 > 0 /\  .
 endm
+
+--- Examples
+rew 'm[clock(0,0,0,0,'n,empty) | 'n[C1:Clock | 'p[C2:Clock | dead]]
+      | open('n) . 'q[C3:Clock | dead]] .
+
+rew 'k[clock(0,0,0,0,('n,'m),empty)
+      | 'n[clock(0,0,0,0,empty,empty) | in('m) . dead]
+      | 'm[clock(0,0,0,0,empty,empty) | dead]] .
+
+
+rew 'k[clock(0,0,0,0,('m),empty)
+     | 'm[clock(0,0,0,0,('n),empty) | dead
+     | 'n[clock(0,0,0,0,empty,empty) | out('m) . dead]]] .
+
+rew 'k[clock(0,0,0,1, empty, empty) | c . dead] .
+
+rew 'k[clock(0,0,0,1, empty, empty) | tick] .
+
+rew 'k[clock(0,0,0,1, 'n, empty) | tick] .
+
+rew 'k[clock(0,0,0,1, empty, 'n) | tick] .
