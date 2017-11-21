@@ -91,7 +91,7 @@ mod TIMED-PROCESS is
     var Ca : Capability .
     vars P Q R U : TimedProcess .
     vars Served Unserved : Servable .
-    vars SrvN SrvM SrvK UnSrvN UnSrvM UnSrvK : Servable .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servable .
 
     op barb : TimedProcess -> Servable .
     eq barb(Ca . P | Q) = barb(Q) .
@@ -108,29 +108,29 @@ mod TIMED-PROCESS is
           in(N, (Served, Unserved)) .
 
     crl [in] :
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK)
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
           | N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | in(M) . P | Q]
           | M[clock(CM1, CM2, CM3, SpdM, SrvM, UnSrvM) | R] | U]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, (SrvK \ N), (UnSrvK \ N))
+        K[clock(CK1, CK2, CK3, SpdK, (UnSrvK \ N), (SrvK \ N))
           | M[clock(CM1, CM2, CM3, SpdM, SrvM, (UnSrvM, N)) | R |
             N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]] | U]
-      if  in(N, (SrvK, UnSrvK)) .
+      if  in(N, (UnSrvK, SrvK)) .
 
     crl [out] :
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK)
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
           | M[clock(CM1, CM2, CM3, SpdM, SrvM, UnSrvM) | R |
             N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | out(M) . P | Q]] | U]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, (UnSrvK, N))
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N))
           | N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]
           | M[clock(CM1, CM2, CM3, SpdM, (SrvM \ N), (UnSrvM \ N)) | R] | U]
       if  in(N, (SrvM, UnSrvM)) .
 
     crl [consumption] :
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | c . P | R]
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | c . P | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, (UnSrvK, (c . P))) | R]
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, (c . P))) | R]
       if SpdK > 0 .
 
     rl [empty]:
@@ -139,21 +139,21 @@ mod TIMED-PROCESS is
         K[clock(CK1 + 1, 0, 0, SpdK, empty, empty) | R] .
 
     crl [tick]:
-        K[clock(CK1, 0, 0, SpdK, SrvK, UnSrvK) | tick | R]
+        K[clock(CK1, 0, 0, SpdK, UnSrvK, SrvK) | tick | R]
       =>
-        K[clock(CK1 + 1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
-      if  CK2 CK3 := speed(SpdK) /\ not isEmpty(SrvK, UnSrvK) .
+        K[clock(CK1 + 1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
+      if  CK2 CK3 := speed(SpdK) /\ not isEmpty(UnSrvK, SrvK) .
 
     crl [new-round] :
-        K[clock(CK1, CK2, CK3, SpdK, empty, UnSrvK) | R]
+        K[clock(CK1, CK2, CK3, SpdK, empty, SrvK) | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, empty) | R]
-        if not isEmpty(UnSrvK) .
+        K[clock(CK1, CK2, CK3, SpdK, SrvK, empty) | R]
+        if not isEmpty(SrvK) .
 
     crl [tock1] :
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, UnSrvK) | R]
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
         if CK2 > 0 /\  .
 endm
 
