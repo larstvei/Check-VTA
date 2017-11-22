@@ -20,25 +20,35 @@ fmod EGYPTIAN is
     pr LIST{Rat} .
 
     vars X Y Z : Int .
+    var L : List{Rat} .
+    var R : Rat .
 
     op _negmod_ : Int Int -> Int .
     eq X negmod Y = Y + X rem Y .
 
     op egyptian : Rat -> List{Rat} .
-    eq egyptian(X) = X .
-    eq egyptian(1 / X) = 1 / X .
-    ceq egyptian(X / Y) = (1 / Z) egyptian((- Y negmod X) / (Y * Z))
+    eq egyptian(R) = gather(egyptian'(R), 0) .
+
+    op egyptian' : Rat -> List{Rat} .
+    eq egyptian'(X) = X .
+    eq egyptian'(1 / X) = 1 / X .
+    ceq egyptian'(X / Y) = (1 / Z) egyptian'((- Y negmod X) / (Y * Z))
       if Z := ceiling(Y / X) [owise] .
 
-    var L : List{Rat} .
-    var R : Rat .
+    op gather : List{Rat} Nat -> List{Rat} .
+    eq gather(1 L, X) = gather(L, X + 1) .
+    eq gather(L, X) = X L [owise] .
 
     op speed : Rat -> List{Rat} .
-    eq speed(R) = speed'(egyptian(R), 0) .
+    ceq speed(R) = X size(L)
+      if X L := egyptian(R) .
 
-    op speed' : List{Rat} Nat -> List{Rat} .
-    eq speed'(1 L, Y) = speed'(L, Y + 1) .
-    eq speed'(L, Y) = Y size(L) [owise] .
+    op get : Nat List{Rat} -> Rat .
+    eq get(1, R L) = R .
+    eq get(s(s(X)), R L) = get(s(X), L) .
+
+    op getFraction : Nat Rat -> Nat .
+    eq getFraction(X, R) = 1 / get(s(X), egyptian(R)) .
 endfm
 
 mod TIMED-PROCESS is
@@ -140,13 +150,13 @@ mod TIMED-PROCESS is
     rl [empty]:
         K[clock(CK1, 0, 0, SpdK, empty, empty) | tick | R]
       =>
-        K[clock(CK1 + 1, 0, 0, SpdK, empty, empty) | R] .
+        K[clock(s(CK1), 0, 0, SpdK, empty, empty) | R] .
 
     crl [tick]:
-        K[clock(CK1, 0, 0, SpdK, UnSrvK, SrvK) | tick | R]
+        K[clock(CK1, 0, CK3, SpdK, UnSrvK, SrvK) | tick | R]
       =>
-        K[clock(CK1 + 1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
-      if  CK2 CK3 := speed(SpdK) /\ not isEmpty(UnSrvK, SrvK) .
+        K[clock(s(CK1), CN2, CN3, SpdK, UnSrvK, SrvK) | R]
+      if  CN2 CN3 := speed(SpdK) /\ not isEmpty(UnSrvK, SrvK) .
 
     crl [new-round] :
         K[clock(CK1, CK2, CK3, SpdK, empty, SrvK) | R]
@@ -154,12 +164,32 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, SrvK, empty) | R]
         if not isEmpty(SrvK) .
 
-    crl [tock1] :
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
+    crl [primary-tock-consume] :
+        K[clock(CK1, s(CK2), CK3, SpdK, UnSrvK, SrvK) | R]
       =>
-        K[clock(CK1, CK2 - 1, CK3, SpdK, UnSrvN, SrvK) | R | P]
-      if  CK2 > 0 /\ (c . P) := getConsume(UnSrvK) /\
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvN, SrvK) | R | P]
+      if  (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
+
+
+    rl [primary-tock-ambient] :
+        K[clock(CK1, s(CK2), CK3, SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
+    =>
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R] .
+
+    crl [secondary-tock-consume] :
+        K[clock(CK1, CK2, s(CK3), SpdK, UnSrvK, SrvK) | R]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvN, SrvK) | R | P]
+      if  CK1 rem getFraction(s(CK3), SpdK) == 0 /\
+          (c . P) := getConsume(UnSrvK) /\
+          UnSrvN := (barb(P), UnSrvK \ (c . P)) .
+
+    crl [secondary-tock-ambient] :
+        K[clock(CK1, CK2, s(CK3), SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
+    =>
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R]
+      if CK1 rem getFraction(s(CK3), SpdK) == 0 .
 endm
 
 --- Examples
@@ -184,3 +214,11 @@ rew 'k[clock(0,0,0,1, 'n, empty) | tick] .
 rew 'k[clock(0,0,0,1, empty, 'n) | tick] .
 
 rew 'k[clock(0,1,0,1, (c . P:TimedProcess), 'n) | dead] .
+
+rew 'k[clock(0,1,0,1, 'n, empty) | 'n[Cl:Clock | P:TimedProcess]] .
+
+rew 'k[clock(3,0,1,1/3, (c . P:TimedProcess), 'n) | dead] .
+
+rew 'k[clock(0,0,0,4/3,'n,empty) | c . c . dead
+      | 'n[clock(0,0,0,1/2,empty,empty) | c . dead]
+      | tick | tick | tick] .
