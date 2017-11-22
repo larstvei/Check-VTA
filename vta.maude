@@ -55,52 +55,39 @@ fmod EGYPTIAN is
     eq getFraction(X, R) = 1 / get(s(X), egyptian(R)) .
 endfm
 
-fmod VTA is
+fmod VTA-SORTS is
     pr NAME .
 
-    sort Clock .
-    sort Tick .
-
-    op tick : -> Tick .
-
-    sort TimedProcess .
-
+    sorts Clock Tick Servable TimedProcess .
     subsort Tick < TimedProcess .
-
-    sort Servable .
     subsort TimedProcess Name < Servable .
 endfm
 
-view Servable from TRIV to VTA is
+view Servable from TRIV to VTA-SORTS is
     sort Elt to Servable .
 endv
 
-
-mod TIMED-PROCESS is
-    pr INT .
+fmod VTA-OPS is
     pr RAT .
-    pr BOOL .
-    pr SET{Servable} .
-    pr EGYPTIAN .
+    pr VTA-SORTS .
     pr CAPABILITY .
+    pr SET{Servable} .
+
+    op tick : -> Tick .
+
+    op clock : Nat Nat Nat Rat Set{Servable} Set{Servable} -> Clock .
 
     op dead : -> TimedProcess [ctor] .
     op _|_ : TimedProcess TimedProcess -> TimedProcess [id: dead assoc comm prec 90] .
     op _._ : Capability TimedProcess -> TimedProcess [prec 80] .
     op _[_|_] : Name Clock TimedProcess -> TimedProcess [prec 70] .
 
-    op clock : Nat Nat Nat Rat Set{Servable} Set{Servable} -> Clock .
 
-    vars N M K : Name .
-    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
-    vars Speed SpdN SpdM SpdK : Rat .
-    vars Cl Cl1 Cl2 Cl3 : Clock .
+    var Unserved : Set{Servable} .
+    vars P Q : TimedProcess .
     var Ca : Capability .
-    vars P Q R U : TimedProcess .
-    vars Served Unserved : Set{Servable} .
-    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
-
-    --- op names : TimedProcess -> Set{Name} .
+    var Cl : Clock .
+    var N : Name .
 
     op barb : TimedProcess -> Set{Servable} .
     eq barb(Ca . P | Q) = barb(Q) .
@@ -110,6 +97,24 @@ mod TIMED-PROCESS is
     op getConsume : Set{Servable} -> Servable .
     eq getConsume(((c . P), Unserved)) = c . P .
     eq getConsume(Unserved) = empty [owise] .
+endfm
+
+mod TIMED-PROCESS is
+    pr INT .
+    pr RAT .
+    pr BOOL .
+    pr SET{Servable} .
+    pr EGYPTIAN .
+    pr VTA-OPS .
+
+    vars N M K : Name .
+    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars Speed SpdN SpdM SpdK : Rat .
+    vars Cl Cl1 Cl2 Cl3 : Clock .
+    var Ca : Capability .
+    vars P Q R U : TimedProcess .
+    vars Served Unserved : Set{Servable} .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
     crl [open] :
         M[clock(CM1, CM2, CM3, Speed, Served, Unserved)
