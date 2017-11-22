@@ -192,6 +192,43 @@ mod TIMED-PROCESS is
       if CK1 rem getFraction(s(CK3), SpdK) == 0 .
 endm
 
+mod VTA-FORMULA is
+    pr TIMED-PROCESS .
+    pr BOOL .
+
+    sort Formula .
+    sort Var .
+
+    ops True False : -> Formula [ctor format (g o)] .
+    op ~_ : Formula -> Formula [ctor prec 53 format (r o d)] .
+    op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (d r o d)] .
+    op void : -> Formula [ctor format (r o)] .
+    op _[_] : Name Formula -> Formula [prec 10] .
+    op _|_ : Formula Formula -> Formula .
+    op all_._ : Var Formula -> Formula .
+    op <>_@__ : Nat Name Formula -> Formula [prec 53] .
+    op <>___ : Rat Nat Formula -> Formula [prec 53] .
+    op _@_ : Formula Name -> Formula .
+
+    vars N M X : Name .
+    vars F G : Formula .
+    vars R : Rat .
+    vars A : Nat .
+    var Y : Var .
+
+    sort Substitution .
+    op [_<-_] : Name Name -> Substitution .
+
+    op __ : Formula Substitution -> Formula [prec 20] .
+    eq M[F][N <- X] = (if (M == N) then X else M fi)[F[N <- X]] .
+    eq (<> A @ M F)[N <- X] = <> A @ (if (M == N) then X else M fi) F[N <- X] .
+    eq (F @ M)[N <- X] = F[N <- X] @ (if (M == N) then X else M fi) .
+    eq (F \/ G)[N <- X] = F[N <- X] \/ G[N <- X] .
+    eq (F | G)[N <- X] = F[N <- X] | G[N <- X] .
+    eq (all Y . F)[N <- X] = all Y . F[N <- X] .
+    eq (<> R A F)[N <- X] = <> R A F[N <- X] .
+    eq F[N <- X] = F [owise] .
+endm
 --- Examples
 rew 'm[clock(0,0,0,0,'n,empty) | 'n[C1:Clock | 'p[C2:Clock | dead]]
       | open('n) . 'q[C3:Clock | dead]] .
