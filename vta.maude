@@ -21,13 +21,13 @@ fmod EGYPTIAN is
 
     vars X Y Z : Int .
 
-    op _mod_ : Int Int -> Int .
-    eq X mod Y = Y + X rem Y .
+    op _negmod_ : Int Int -> Int .
+    eq X negmod Y = Y + X rem Y .
 
     op egyptian : Rat -> List{Rat} .
     eq egyptian(X) = X .
     eq egyptian(1 / X) = 1 / X .
-    ceq egyptian(X / Y) = (1 / Z) egyptian((- Y mod X) / (Y * Z))
+    ceq egyptian(X / Y) = (1 / Z) egyptian((- Y negmod X) / (Y * Z))
       if Z := ceiling(Y / X) [owise] .
 
     var L : List{Rat} .
