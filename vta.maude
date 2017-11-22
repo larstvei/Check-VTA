@@ -5,6 +5,10 @@ fmod NAME is
     subsort Qid < Name .
 endfm
 
+view Name from TRIV to NAME is
+    sort Elt to Name .
+endv
+
 fmod CAPABILITY is
     pr NAME .
 
@@ -51,12 +55,8 @@ fmod EGYPTIAN is
     eq getFraction(X, R) = 1 / get(s(X), egyptian(R)) .
 endfm
 
-mod TIMED-PROCESS is
-    pr INT .
-    pr RAT .
-    pr BOOL .
-    pr EGYPTIAN .
-    pr CAPABILITY .
+fmod VTA is
+    pr NAME .
 
     sort Clock .
     sort Tick .
@@ -69,30 +69,27 @@ mod TIMED-PROCESS is
 
     sort Servable .
     subsort TimedProcess Name < Servable .
+endfm
 
-    vars S T : Servable .
-    op empty : -> Servable .
-    op _,_ : Servable Servable -> Servable [assoc comm id: empty prec 30] .
-    eq S, S = S .
+view Servable from TRIV to VTA is
+    sort Elt to Servable .
+endv
 
-    op _\_ : Servable Servable -> Servable [prec 100] .
-    eq T, S \ S = T .
-    eq T \ S = T [owise] .
 
-    op isEmpty : Servable -> Bool .
-    eq isEmpty(empty) = true .
-    eq isEmpty(S) = false [owise] .
-
-    op _isIn_ : Servable Servable -> Bool .
-    eq S isIn (S, T) = true .
-    eq S isIn T = false [owise] .
+mod TIMED-PROCESS is
+    pr INT .
+    pr RAT .
+    pr BOOL .
+    pr SET{Servable} .
+    pr EGYPTIAN .
+    pr CAPABILITY .
 
     op dead : -> TimedProcess [ctor] .
     op _|_ : TimedProcess TimedProcess -> TimedProcess [id: dead assoc comm prec 90] .
     op _._ : Capability TimedProcess -> TimedProcess [prec 80] .
     op _[_|_] : Name Clock TimedProcess -> TimedProcess [prec 70] .
 
-    op clock : Nat Nat Nat Rat Servable Servable -> Clock .
+    op clock : Nat Nat Nat Rat Set{Servable} Set{Servable} -> Clock .
 
     vars N M K : Name .
     vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
@@ -100,26 +97,28 @@ mod TIMED-PROCESS is
     vars Cl Cl1 Cl2 Cl3 : Clock .
     var Ca : Capability .
     vars P Q R U : TimedProcess .
-    vars Served Unserved : Servable .
-    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servable .
+    vars Served Unserved : Set{Servable} .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
-    op barb : TimedProcess -> Servable .
+    --- op names : TimedProcess -> Set{Name} .
+
+    op barb : TimedProcess -> Set{Servable} .
     eq barb(Ca . P | Q) = barb(Q) .
     eq barb(N[Cl | P] | Q) = N, barb(Q) .
     eq barb(P) = empty [owise] .
 
-    op getConsume : Servable -> Servable .
-    eq getConsume((c . P), Unserved) = c . P .
+    op getConsume : Set{Servable} -> Servable .
+    eq getConsume(((c . P), Unserved)) = c . P .
     eq getConsume(Unserved) = empty [owise] .
 
     crl [open] :
         M[clock(CM1, CM2, CM3, Speed, Served, Unserved)
           | open(N) . P | N[Cl | R] | Q]
       =>
-        M[clock(CM1, CM2, CM3, Speed, S, T) | P | Q | R]
-      if  S := (Served \ N) /\
-          T := (Unserved \ N), barb(P), barb(R) /\
-          N isIn (Served, Unserved) .
+        M[clock(CM1, CM2, CM3, Speed, SrvM, UnSrvM) | P | Q | R]
+      if  SrvM := (Served \ N) /\
+          UnSrvM := (Unserved \ N), barb(P), barb(R) /\
+          N in (Served, Unserved) .
 
     crl [in] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
@@ -129,7 +128,7 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, (UnSrvK \ N), (SrvK \ N))
           | M[clock(CM1, CM2, CM3, SpdM, SrvM, (UnSrvM, N)) | R |
             N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]] | U]
-      if  N isIn (UnSrvK, SrvK) .
+      if  N in (UnSrvK, SrvK) .
 
     crl [out] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
@@ -139,7 +138,7 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N))
           | N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]
           | M[clock(CM1, CM2, CM3, SpdM, (SrvM \ N), (UnSrvM \ N)) | R] | U]
-      if  N isIn (SrvM, UnSrvM) .
+      if  N in (SrvM, UnSrvM) .
 
     crl [consumption] :
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | c . P | R]
@@ -156,13 +155,13 @@ mod TIMED-PROCESS is
         K[clock(CK1, 0, CK3, SpdK, UnSrvK, SrvK) | tick | R]
       =>
         K[clock(s(CK1), CN2, CN3, SpdK, UnSrvK, SrvK) | R]
-      if  CN2 CN3 := speed(SpdK) /\ not isEmpty(UnSrvK, SrvK) .
+      if  CN2 CN3 := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
 
     crl [new-round] :
         K[clock(CK1, CK2, CK3, SpdK, empty, SrvK) | R]
       =>
         K[clock(CK1, CK2, CK3, SpdK, SrvK, empty) | R]
-        if not isEmpty(SrvK) .
+        if | SrvK | > 0 .
 
     crl [primary-tock-consume] :
         K[clock(CK1, s(CK2), CK3, SpdK, UnSrvK, SrvK) | R]
