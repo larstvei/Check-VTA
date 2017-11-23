@@ -250,11 +250,25 @@ mod VTA-FORMULA is
     eq allsubs'(X, empty, F) = True .
     eq allsubs'(X, (N, NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
 
-    op sublocations : TimedProcess -> Set{Servable} .
-    ceq sublocations(P | Q) = P, Q, sublocations(P), sublocations(Q)
+    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars Speed SpdN SpdM SpdK : Rat .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
+
+    op accumulatespeed : Clock TimedProcess -> TimedProcess .
+    eq accumulatespeed(clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK),
+          (N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | P] | Q))
+      =
+        N[clock(CN1, CN2, CN3, SpdN * SpdK, SrvN, UnSrvN) | P] |
+        accumulatespeed(clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK), Q) .
+    ceq accumulatespeed(Cl, P | Q) = accumulatespeed(Cl, P) | accumulatespeed(Cl, Q)
       if P =/= dead and Q =/= dead .
-    eq sublocations(N[Cl | Q]) = Q, sublocations(Q) .
-    eq sublocations(Ca . P) = Ca . P .
+    eq accumulatespeed(Cl, P) = dead [owise] .
+
+    op sublocations : TimedProcess -> Set{Servable} .
+    ceq sublocations(P | Q) = sublocations(P), sublocations(Q)
+      if P =/= dead and Q =/= dead .
+    ceq sublocations(N[Cl | P]) = N[Cl | P], Q, sublocations(Q)
+      if Q := accumulatespeed(Cl, P) .
     eq sublocations(P) = empty [owise] .
 endm
 
@@ -266,6 +280,7 @@ mod VTA-SATISFACTION is
     vars P Q : TimedProcess .
     vars N X : Name .
     var Cl : Clock .
+    var S : Nat .
 
     op _|=_ : TimedProcess Formula -> Bool [prec 100] .
 
@@ -277,7 +292,23 @@ mod VTA-SATISFACTION is
     eq N[Cl | P] |= N[F] = P |= F .
     eq P | Q |= F | G = (P |= F) and (Q |= G) .
     eq P |= all X . F = P |= allsubs(X, P, F) .
-    --- eq P |= F = false [owise] .
+    ceq N[Cl | P] |= <> Speed S F = somewhere(Ps, Speed, S, F)
+      if  Ps := sublocations(N[Cl | P]) .
+
+    var Ps : Set{Servable} .
+    vars R : Rat .
+    vars A : Nat .
+    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars Speed SpdN SpdM SpdK : Rat .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
+
+    op somewhere : Set{Servable} Rat Nat Formula -> Bool .
+    eq somewhere((N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P], Ps), R, A, F) =
+        ((N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P] |= F)
+          and (Speed >= R)
+          and (| SrvN, UnSrvN | < A))
+        or somewhere(Ps, R, A, F) .
+    eq somewhere(Ps, R, A, F) = false [owise] .
 endm
 
 --- Examples
@@ -310,3 +341,9 @@ rew 'k[clock(3,0,1,1/3, (c . P:TimedProcess), 'n) | dead] .
 rew 'k[clock(0,0,0,4/3,'n,empty) | c . c . dead
       | 'n[clock(0,0,0,1/2,empty,empty) | c . dead]
       | tick | tick | tick] .
+
+red
+'k[clock(0,0,0,1,('vm,'r),empty) |
+'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
+| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+|= <> 1/2 1 True .
