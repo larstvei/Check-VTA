@@ -229,14 +229,14 @@ mod VTA-FORMULA is
     op [_<-_] : Name Name -> Substitution .
 
     op __ : Formula Substitution -> Formula [prec 20] .
-    eq M[F][N <- X] = (if (M == N) then X else M fi)[F[N <- X]] .
-    eq (<> A @ M F)[N <- X] = <> A @ (if (M == N) then X else M fi) F[N <- X] .
-    eq (F @ M)[N <- X] = F[N <- X] @ (if (M == N) then X else M fi) .
-    eq (F \/ G)[N <- X] = F[N <- X] \/ G[N <- X] .
-    eq (F | G)[N <- X] = F[N <- X] | G[N <- X] .
-    eq (all Y . F)[N <- X] = all Y . F[N <- X] .
-    eq (<> R A F)[N <- X] = <> R A F[N <- X] .
-    eq F[N <- X] = F [owise] .
+    eq M[F][X <- N] = (if (M == X) then N else M fi)[F[X <- N]] .
+    eq (<> A @ M F)[X <- N] = <> A @ (if (M == X) then N else M fi) F[X <- N] .
+    eq (F @ M)[X <- N] = F[X <- N] @ (if (M == X) then N else M fi) .
+    eq (F \/ G)[X <- N] = F[X <- N] \/ G[X <- N] .
+    eq (F | G)[X <- N] = F[X <- N] | G[X <- N] .
+    eq (all Y . F)[X <- N] = all Y . F[X <- N] .
+    eq (<> R A F)[X <- N] = <> R A F[X <- N] .
+    --- eq F[N <- X] = F [owise] .
 endm
 
 mod VTA-SATISFACTION is
