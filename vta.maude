@@ -172,7 +172,7 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, empty, SrvK) | R]
       =>
         K[clock(CK1, CK2, CK3, SpdK, SrvK, empty) | R]
-        if | SrvK | > 0 .
+      if | SrvK | > 0 .
 
     crl [primary-tock-consume] :
         K[clock(CK1, s(CK2), CK3, SpdK, UnSrvK, SrvK) | R]
@@ -183,7 +183,7 @@ mod TIMED-PROCESS is
 
     rl [primary-tock-ambient] :
         K[clock(CK1, s(CK2), CK3, SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
-    =>
+      =>
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R] .
 
     crl [secondary-tock-consume] :
@@ -196,7 +196,7 @@ mod TIMED-PROCESS is
 
     crl [secondary-tock-ambient] :
         K[clock(CK1, CK2, s(CK3), SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
-    =>
+      =>
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R]
       if CK1 rem getFraction(s(CK3), SpdK) == 0 .
 endm
