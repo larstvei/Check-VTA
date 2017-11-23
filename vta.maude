@@ -253,22 +253,22 @@ mod VTA-SATISFACTION is
     pr TIMED-PROCESS .
     pr VTA-FORMULA .
 
-    op _|=_ : TimedProcess Formula -> Bool [prec 100] .
-
     vars F G : Formula .
     vars P Q : TimedProcess .
-    var N : Name .
+    vars N X : Name .
     var Cl : Clock .
-    var X : Var .
+
+    op _|=_ : TimedProcess Formula -> Bool [prec 100] .
 
     eq P |= True = true .
-    ceq P |= ~ F = true if not (P |= F) .
-    ceq P |= F \/ G = true if (P |= F) or (P |= G) .
+    eq P |= ~ F = not (P |= F) .
+    eq P |= F /\ G = (P |= F) and (P |= G) .
+    eq P |= F \/ G = (P |= F) or (P |= G) .
     eq dead |= void = true .
-    ceq N[Cl | P] |= N[F] = true if P |= F .
-    ceq P | Q |= F | G = true if (P |= F) and (Q |= G) .
-    eq P |= F = false [owise] .
+    eq N[Cl | P] |= N[F] = P |= F .
+    eq P | Q |= F | G = (P |= F) and (Q |= G) .
     eq P |= all X . F = P |= allsubs(X, P, F) .
+    --- eq P |= F = false [owise] .
 endm
 
 --- Examples
