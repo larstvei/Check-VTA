@@ -238,7 +238,9 @@ mod VTA-FORMULA is
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     --- eq F[N <- X] = F [owise] .
 
-    var P : TimedProcess .
+    var Cl : Clock .
+    var Ca : Capability .
+    vars P Q : TimedProcess .
     vars NS MS : Set{Servable} .
 
     op allsubs : Name TimedProcess Formula -> Formula .
@@ -247,6 +249,13 @@ mod VTA-FORMULA is
     op allsubs' : Name Set{Servable} Formula -> Formula .
     eq allsubs'(X, empty, F) = True .
     eq allsubs'(X, (N, NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
+
+    op sublocations : TimedProcess -> Set{Servable} .
+    ceq sublocations(P | Q) = P, Q, sublocations(P), sublocations(Q)
+      if P =/= dead and Q =/= dead .
+    eq sublocations(N[Cl | Q]) = Q, sublocations(Q) .
+    eq sublocations(Ca . P) = Ca . P .
+    eq sublocations(P) = empty [owise] .
 endm
 
 mod VTA-SATISFACTION is
