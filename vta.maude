@@ -210,20 +210,20 @@ mod VTA-FORMULA is
 
     ops True False : -> Formula [ctor format (g o)] .
     op ~_ : Formula -> Formula [ctor prec 53 format (r o d)] .
+    op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (d r o d)] .
     op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (d r o d)] .
     op void : -> Formula [ctor format (r o)] .
     op _[_] : Name Formula -> Formula [prec 10] .
     op _|_ : Formula Formula -> Formula .
-    op all_._ : Var Formula -> Formula .
+    op all_._ : Name Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
     op <>___ : Rat Nat Formula -> Formula [prec 53] .
     op _@_ : Formula Name -> Formula .
 
-    vars N M X : Name .
+    vars N M X Y : Name .
     vars F G : Formula .
     vars R : Rat .
     vars A : Nat .
-    var Y : Var .
 
     sort Substitution .
     op [_<-_] : Name Name -> Substitution .
@@ -237,6 +237,16 @@ mod VTA-FORMULA is
     eq (all Y . F)[X <- N] = all Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     --- eq F[N <- X] = F [owise] .
+
+    var P : TimedProcess .
+    vars NS MS : Set{Servable} .
+
+    op allsubs : Name TimedProcess Formula -> Formula .
+    eq allsubs(X, P, F) = allsubs'(X, names(P), F) .
+
+    op allsubs' : Name Set{Servable} Formula -> Formula .
+    eq allsubs'(X, empty, F) = True .
+    eq allsubs'(X, (N, NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
 endm
 
 mod VTA-SATISFACTION is
@@ -257,8 +267,8 @@ mod VTA-SATISFACTION is
     eq dead |= void = true .
     ceq N[Cl | P] |= N[F] = true if P |= F .
     ceq P | Q |= F | G = true if (P |= F) and (Q |= G) .
-    ---ceq P |= all X . F = true if P |= F[X <- N] .
     eq P |= F = false [owise] .
+    eq P |= all X . F = P |= allsubs(X, P, F) .
 endm
 
 --- Examples
