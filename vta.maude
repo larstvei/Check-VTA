@@ -53,7 +53,8 @@ fmod VTA-OPS is
 
     op names : TimedProcess -> Set{Servable} .
     eq names(dead) = empty .
-    ceq names(P | Q) = union(names(P), names(Q)) if P =/= dead and Q =/= dead .
+    eq names(tick) = empty .
+    ceq names(P | Q) = names(P), names(Q) if P =/= dead and Q =/= dead .
     eq names(Ca . P) = names(P) .
     eq names(N[Cl | P]) = N, names(P) .
 
