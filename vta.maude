@@ -43,8 +43,7 @@ fmod VTA-OPS is
     op dead : -> TimedProcess [ctor] .
     op _|_ : TimedProcess TimedProcess -> TimedProcess [id: dead assoc comm prec 90] .
     op _._ : Capability TimedProcess -> TimedProcess [prec 80] .
-    op _[_|_] : Name Clock TimedProcess -> TimedProcess [prec 70] .
-
+    op _[_|_] : Name Clock TimedProcess -> TimedProcess [prec 70 format (ni+ d d d d d -)] .
 
     var Unserved : Set{Servable} .
     vars P Q : TimedProcess .
