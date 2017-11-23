@@ -18,43 +18,6 @@ fmod CAPABILITY is
     ops in out open : Name -> Capability .
 endfm
 
-fmod EGYPTIAN is
-    pr NAT .
-    pr RAT .
-    pr LIST{Rat} .
-
-    vars X Y Z : Int .
-    var L : List{Rat} .
-    var R : Rat .
-
-    op _negmod_ : Int Int -> Int .
-    eq X negmod Y = Y + X rem Y .
-
-    op egyptian : Rat -> List{Rat} .
-    eq egyptian(R) = gather(egyptian'(R), 0) .
-
-    op egyptian' : Rat -> List{Rat} .
-    eq egyptian'(X) = X .
-    eq egyptian'(1 / X) = 1 / X .
-    ceq egyptian'(X / Y) = (1 / Z) egyptian'((- Y negmod X) / (Y * Z))
-      if Z := ceiling(Y / X) [owise] .
-
-    op gather : List{Rat} Nat -> List{Rat} .
-    eq gather(1 L, X) = gather(L, X + 1) .
-    eq gather(L, X) = X L [owise] .
-
-    op speed : Rat -> List{Rat} .
-    ceq speed(R) = X size(L)
-      if X L := egyptian(R) .
-
-    op get : Nat List{Rat} -> Rat .
-    eq get(1, R L) = R .
-    eq get(s(s(X)), R L) = get(s(X), L) .
-
-    op getFraction : Nat Rat -> Nat .
-    eq getFraction(X, R) = 1 / get(s(X), egyptian(R)) .
-endfm
-
 fmod VTA-SORTS is
     pr NAME .
 
@@ -103,6 +66,43 @@ fmod VTA-OPS is
     op getConsume : Set{Servable} -> Servable .
     eq getConsume(((c . P), Unserved)) = c . P .
     eq getConsume(Unserved) = empty [owise] .
+endfm
+
+fmod EGYPTIAN is
+    pr NAT .
+    pr RAT .
+    pr LIST{Rat} .
+
+    vars X Y Z : Int .
+    var L : List{Rat} .
+    var R : Rat .
+
+    op _negmod_ : Int Int -> Int .
+    eq X negmod Y = Y + X rem Y .
+
+    op egyptian : Rat -> List{Rat} .
+    eq egyptian(R) = gather(egyptian'(R), 0) .
+
+    op egyptian' : Rat -> List{Rat} .
+    eq egyptian'(X) = X .
+    eq egyptian'(1 / X) = 1 / X .
+    ceq egyptian'(X / Y) = (1 / Z) egyptian'((- Y negmod X) / (Y * Z))
+      if Z := ceiling(Y / X) [owise] .
+
+    op gather : List{Rat} Nat -> List{Rat} .
+    eq gather(1 L, X) = gather(L, X + 1) .
+    eq gather(L, X) = X L [owise] .
+
+    op speed : Rat -> List{Rat} .
+    ceq speed(R) = X size(L)
+      if X L := egyptian(R) .
+
+    op get : Nat List{Rat} -> Rat .
+    eq get(1, R L) = R .
+    eq get(s(s(X)), R L) = get(s(X), L) .
+
+    op getFraction : Nat Rat -> Nat .
+    eq getFraction(X, R) = 1 / get(s(X), egyptian(R)) .
 endfm
 
 mod TIMED-PROCESS is
@@ -180,7 +180,6 @@ mod TIMED-PROCESS is
         K[clock(CK1, CK2, CK3, SpdK, UnSrvN, SrvK) | R | P]
       if  (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
-
 
     rl [primary-tock-ambient] :
         K[clock(CK1, s(CK2), CK3, SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
