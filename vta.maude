@@ -214,7 +214,7 @@ mod VTA-FORMULA is
     op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (d r o d)] .
     op void : -> Formula [ctor format (r o)] .
     op _[_] : Name Formula -> Formula [prec 10] .
-    op _|_ : Formula Formula -> Formula .
+    op _|_ : Formula Formula -> Formula [comm assoc] .
     op all_._ : Name Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
     op <>___ : Rat Nat Formula -> Formula [prec 53] .
@@ -236,7 +236,7 @@ mod VTA-FORMULA is
     eq (F | G)[X <- N] = F[X <- N] | G[X <- N] .
     eq (all Y . F)[X <- N] = all Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
-    --- eq F[N <- X] = F [owise] .
+    eq F[N <- X] = F [owise] .
 
     var Cl : Clock .
     var Ca : Capability .
