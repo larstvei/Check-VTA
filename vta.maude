@@ -270,6 +270,22 @@ mod VTA-FORMULA is
     ceq sublocations(N[Cl | P]) = N[Cl | P], Q, sublocations(Q)
       if Q := accumulatespeed(Cl, P) .
     eq sublocations(P) = empty [owise] .
+
+    op contains : TimedProcess Name -> Bool .
+    ceq contains(P | Q, X) = contains(P, X) or contains(Q, X)
+      if P =/= dead and Q =/= dead .
+    eq contains(N[Cl | P], X) = if N == X then true else contains(P, X) fi .
+    eq contains(P, X) = false [owise] .
+
+    op time : TimedProcess Name -> Nat .
+    ceq time(P | Q, X) = max(time(P, X), time(Q, X))
+      if P =/= dead and Q =/= dead .
+    eq time(N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P], X) =
+        if N == X then CN1 else time(P, X) fi .
+    eq time(P, X) = 0 [owise] .
+
+    op distance : TimedProcess TimedProcess Name -> Nat .
+    eq distance(P, Q, X) = sd(time(Q, X), time(P, X)) .
 endm
 
 mod VTA-SATISFACTION is
@@ -282,18 +298,26 @@ mod VTA-SATISFACTION is
     var Cl : Clock .
     var S : Nat .
 
-    op _|=_ : TimedProcess Formula -> Bool [prec 100] .
+    op _|=_ : TimedProcess Formula -> Bool [frozen prec 100] .
 
-    eq P |= True = true .
-    eq P |= ~ F = not (P |= F) .
-    eq P |= F /\ G = (P |= F) and (P |= G) .
-    eq P |= F \/ G = (P |= F) or (P |= G) .
-    eq dead |= void = true .
-    eq N[Cl | P] |= N[F] = P |= F .
-    eq P | Q |= F | G = (P |= F) and (Q |= G) .
-    eq P |= all X . F = P |= allsubs(X, P, F) .
-    ceq N[Cl | P] |= <> Speed S F = somewhere(Ps, Speed, S, F)
+    eq [True] : P |= True = true .
+    eq [False] : P |= False = false .
+    eq [Negation] : P |= ~ F = not (P |= F) .
+    eq [Conjunction] : P |= F /\ G = (P |= F) and (P |= G) .
+    eq [Disjunction] : P |= F \/ G = (P |= F) or (P |= G) .
+    eq [Void] : dead |= void = true .
+    eq [Ambient] : N[Cl | P] |= X[F] = if N == X then P |= F else false fi .
+    eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
+    eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
+    ceq [Somewhere] : N[Cl | P] |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(N[Cl | P]) .
+
+    crl [Sometime] : P |= <> A @ X F => true
+      if  P => Q /\
+          Q |= F /\
+          contains(P, X) /\
+          contains(Q, X) /\
+          distance(P, Q, X) <= A .
 
     var Ps : Set{Servable} .
     vars R : Rat .
