@@ -368,8 +368,33 @@ rew 'k[clock(0,0,0,4/3,'n,empty) | c . c . dead
       | 'n[clock(0,0,0,1/2,empty,empty) | c . dead]
       | tick | tick | tick] .
 
-red
+--- should be false:
+rew
 'k[clock(0,0,0,1,('vm,'r),empty) |
 'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
 | 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
-|= <> 1/2 1 True .
+
+|
+
+'n[clock(0,0,0,1,('vm,'r),empty) |
+'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
+| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+
+
+|= 'n[True] | (<> 1 @ 'vm 'k[True | 'done[True]]) .
+
+--- should be true:
+rew
+
+'k[clock(0,0,0,1,('vm,'r),empty) |
+'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
+| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+
+|
+
+'n[clock(0,0,0,1,('vm,'r),empty) |
+'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
+| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+
+
+|= 'n[True] | (<> 2 @ 'vm 'k[True | 'done[True]]) .
