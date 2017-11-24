@@ -38,6 +38,7 @@ fmod VTA-OPS is
 
     op tick : -> Tick .
 
+    op dummyclock : -> Clock .
     op clock : Nat Nat Nat Rat Set{Servable} Set{Servable} -> Clock .
 
     op dead : -> TimedProcess [ctor] .
@@ -311,6 +312,7 @@ mod VTA-SATISFACTION is
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
     ceq [Somewhere] : N[Cl | P] |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(N[Cl | P]) .
+    eq [LocalAdjunct] : P |= F @ N = N[dummyclock | P] |= F .
 
     crl [Sometime] : P |= <> A @ X F => true
       if  P => Q /\
