@@ -123,12 +123,12 @@ mod TIMED-PROCESS is
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
     crl [open] :
-        M[clock(CM1, CM2, CM3, Speed, Served, Unserved)
+        M[clock(CM1, CM2, CM3, Speed, Unserved, Served)
           | open(N) . P | N[Cl | R] | Q]
       =>
-        M[clock(CM1, CM2, CM3, Speed, SrvM, UnSrvM) | P | Q | R]
-      if  SrvM := (Served \ N) /\
-          UnSrvM := (Unserved \ N), barb(P), barb(R) /\
+        M[clock(CM1, CM2, CM3, Speed, UnSrvM, SrvM) | P | Q | R]
+      if  UnSrvM := (Unserved \ N) /\
+          SrvM := (Served \ N), barb(P), barb(R) /\
           N in (Served, Unserved) .
 
     crl [in] :
