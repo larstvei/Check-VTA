@@ -52,12 +52,18 @@ fmod VTA-OPS is
     var Cl : Clock .
     var N : Name .
 
+    op names : Capability -> Set{Servable} .
+    eq names(c) = empty .
+    eq names(in(N)) = N .
+    eq names(out(N)) = N .
+    eq names(open(N)) = N .
+
     op names : TimedProcess -> Set{Servable} .
     eq names(dead) = empty .
     eq names(tick) = empty .
-    ceq names(P | Q) = names(P), names(Q) if P =/= dead and Q =/= dead .
-    eq names(Ca . P) = names(P) .
+    eq names(Ca . P) = names(Ca), names(P) .
     eq names(N[Cl | P]) = N, names(P) .
+    ceq names(P | Q) = names(P), names(Q) if P =/= dead and Q =/= dead .
 
     op barb : TimedProcess -> Set{Servable} .
     eq barb(Ca . P | Q) = barb(Q) .
