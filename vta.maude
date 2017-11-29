@@ -276,7 +276,7 @@ mod VTA-FORMULA is
       if P =/= dead and Q =/= dead .
     ceq sublocations(N[Cl | P]) = N[Cl | P], Q, sublocations(Q)
       if Q := accumulatespeed(Cl, P) .
-    eq sublocations(P) = empty [owise] .
+    eq sublocations(P) = P [owise] .
 
     op contains : TimedProcess Name -> Bool .
     ceq contains(P | Q, X) = contains(P, X) or contains(Q, X)
@@ -316,8 +316,8 @@ mod VTA-SATISFACTION is
     eq [Ambient] : N[Cl | P] |= X[F] = if N == X then P |= F else false fi .
     eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
-    ceq [Somewhere] : N[Cl | P] |= <> Speed S F = somewhere(Ps, Speed, S, F)
-      if  Ps := sublocations(N[Cl | P]) .
+    ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
+      if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[dummyclock | P] |= F .
 
     crl [Sometime] : P |= <> A @ X F => true
@@ -338,7 +338,7 @@ mod VTA-SATISFACTION is
     eq somewhere((N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P], Ps), R, A, F) =
         ((N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P] |= F)
           and (Speed >= R)
-          and (| SrvN, UnSrvN | < A))
+          and (| SrvN, UnSrvN | <= A))
         or somewhere(Ps, R, A, F) .
     eq somewhere(Ps, R, A, F) = false [owise] .
 endm
