@@ -216,6 +216,7 @@ mod VTA-FORMULA is
     sort Var .
 
     ops True False : -> Formula [ctor format (g o)] .
+    op Consume : -> Formula [ctor] .
     op ~_ : Formula -> Formula [ctor prec 53 format (r o d)] .
     op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (d r o d)] .
     op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (d r o d)] .
@@ -260,6 +261,16 @@ mod VTA-FORMULA is
     vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
+
+    op consumptions : TimedProcess -> Bool .
+    eq consumptions(c . P) = true .
+    eq consumptions(in(N) . P) = consumptions(P) .
+    eq consumptions(out(N) . P) = consumptions(P) .
+    eq consumptions(open(N) . P) = consumptions(P) .
+    ceq consumptions(P | Q) = consumptions(P) or consumptions(Q)
+      if P =/= dead and Q =/= dead .
+    eq consumptions(N[Cl | P]) = consumptions(P) .
+    eq consumptions(P) = false [owise] .
 
     op accumulatespeed : Clock TimedProcess -> TimedProcess .
     eq accumulatespeed(clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK),
@@ -316,6 +327,7 @@ mod VTA-SATISFACTION is
     eq [Ambient] : N[Cl | P] |= X[F] = if N == X then P |= F else false fi .
     eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
+    eq [Consumption] : P |= Consume = consumptions(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[dummyclock | P] |= F .
