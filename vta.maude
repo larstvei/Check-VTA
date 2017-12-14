@@ -193,7 +193,7 @@ mod TIMED-PROCESS is
       =>
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R] .
 
-    crl [secondary-tock-consume] :
+    crl [secondary-tock-consume1] :
         K[clock(CK1, CK2, s(CK3), SpdK, UnSrvK, SrvK) | R]
       =>
         K[clock(CK1, CK2, CK3, SpdK, UnSrvN, SrvK) | R | P]
@@ -201,11 +201,23 @@ mod TIMED-PROCESS is
           (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
-    crl [secondary-tock-ambient] :
+    crl [secondary-tock-consume2] :
+        K[clock(CK1, CK2, s(CK3), SpdK, UnSrvK, SrvK) | R]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | R]
+      if  CK1 rem getFraction(s(CK3), SpdK) =/= 0 .
+
+    crl [secondary-tock-ambient1] :
         K[clock(CK1, CK2, s(CK3), SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
       =>
         K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R]
       if CK1 rem getFraction(s(CK3), SpdK) == 0 .
+
+    crl [secondary-tock-ambient2] :
+        K[clock(CK1, CK2, s(CK3), SpdK, UnSrvK, SrvK) | N[Cl | Q] | R]
+      =>
+        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | N[Cl | Q] | R]
+      if CK1 rem getFraction(s(CK3), SpdK) =/= 0 .
 endm
 
 mod VTA-FORMULA is
