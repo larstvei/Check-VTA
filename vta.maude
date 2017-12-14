@@ -170,7 +170,7 @@ mod TIMED-PROCESS is
         K[clock(s(CK1), 0, 0, SpdK, empty, empty) | R] .
 
     crl [tick]:
-        K[clock(CK1, 0, CK3, SpdK, UnSrvK, SrvK) | tick | R]
+        K[clock(CK1, 0, 0, SpdK, UnSrvK, SrvK) | tick | R]
       =>
         K[clock(s(CK1), CN2, CN3, SpdK, UnSrvK, SrvK) | R]
       if  CN2 CN3 := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
