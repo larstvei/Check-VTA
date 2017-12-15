@@ -423,3 +423,19 @@ rew
 
 
 |= 'n[True] | (<> 2 @ 'vm 'k[True | 'done[True]]) .
+
+rew
+
+ 'root[clock(0, 0, 0, 1, 'request, 'vm) | tick | tick |
+  'request[clock(0, 0, 0, 0, empty, empty) | in('vm) . c . dead] |
+  'vm[clock(0, 0, 0, 3/4, empty, empty) | open('request) . dead]]
+
+   |= <> 2 @ 'vm ~ Consume .
+
+rew
+
+ 'root[clock(0, 0, 0, 1, 'request, 'vm) | tick | tick |
+  'request[clock(0, 0, 0, 0, empty, empty) | in('vm) . c . dead] |
+  'vm[clock(0, 0, 0, 3/4, empty, empty) | open('request) . dead]]
+
+   |= ~ (all X . (~ (<> 2 @ X ~ Consume))) .
