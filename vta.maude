@@ -340,10 +340,10 @@ mod VTA-SATISFACTION is
     eq [LocalAdjunct] : P |= F @ N = N[dummyclock | P] |= F .
 
     crl [Sometime] : P |= <> A @ X F => true
-      if  P => Q /\
-          Q |= F /\
-          contains(P, X) /\
+      if  contains(P, X) /\
+          P => Q /\
           contains(Q, X) /\
+          Q |= F /\
           distance(P, Q, X) <= A .
 
     var Ps : Set{Servable} .
