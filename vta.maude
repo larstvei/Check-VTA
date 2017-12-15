@@ -243,6 +243,7 @@ mod VTA-FORMULA is
     op [_<-_] : Name Name -> Substitution .
 
     op __ : Formula Substitution -> Formula [prec 20] .
+    eq (~ F)[X <- N] = ~ (F[X <- N]) .
     eq M[F][X <- N] = (if (M == X) then N else M fi)[F[X <- N]] .
     eq (<> A @ M F)[X <- N] = <> A @ (if (M == X) then N else M fi) F[X <- N] .
     eq (F @ M)[X <- N] = F[X <- N] @ (if (M == X) then N else M fi) .
