@@ -346,6 +346,8 @@ mod VTA-SATISFACTION is
           Q |= F /\
           distance(P, Q, X) <= A .
 
+    rl [Sometime-else] : P |= F => false .
+
     var Ps : Set{Servable} .
     vars R : Rat .
     vars A : Nat .
