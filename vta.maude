@@ -343,7 +343,7 @@ mod VTA-SATISFACTION is
       if  contains(P, X) /\
           P => Q /\
           contains(Q, X) /\
-          Q |= F /\
+          Q |= F => true /\
           distance(P, Q, X) <= A .
 
     rl [Sometime-else] : P |= F => false .
