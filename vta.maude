@@ -121,7 +121,7 @@ mod TIMED-PROCESS is
     pr VTA-OPS .
 
     vars N M K : Name .
-    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars InN OutN RestN InM OutM RestM InK OutK RestK : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
     vars Sc Sc1 Sc2 Sc3 : Schedule .
     var Ca : Capability .
@@ -130,88 +130,88 @@ mod TIMED-PROCESS is
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
     crl [open] :
-        M[sched Speed {CM1, CM2, CM3, Unserved, Served}
+        M[sched Speed {InM, OutM, RestM, Unserved, Served}
           | open(N) . P | N[Sc | R] | Q]
       =>
-        M[sched Speed {CM1, CM2, CM3, UnSrvM, SrvM} | P | Q | R]
+        M[sched Speed {InM, OutM, RestM, UnSrvM, SrvM} | P | Q | R]
       if  UnSrvM := (Unserved \ N) /\
           SrvM := (Served \ N), barb(P), barb(R) /\
           N in (Served, Unserved) .
 
     crl [in] :
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK}
-          | N[sched SpdN {CN1, CN2, CN3, SrvN, UnSrvN} | in(M) . P | Q]
-          | M[sched SpdM {CM1, CM2, CM3, SrvM, UnSrvM} | R] | U]
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | in(M) . P | Q]
+          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
-        K[sched SpdK {CK1, CK2, CK3, (UnSrvK \ N), (SrvK \ N)}
-          | M[sched SpdM {CM1, CM2, CM3, SrvM, (UnSrvM, N)} | R |
-            N[sched SpdN {CN1, CN2, CN3, SrvN, (UnSrvN, barb(P))} | P | Q]] | U]
+        K[sched SpdK {InK, OutK, RestK, (UnSrvK \ N), (SrvK \ N)}
+          | M[sched SpdM {InM, OutM, RestM, SrvM, (UnSrvM, N)} | R |
+            N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))} | P | Q]] | U]
       if  N in (UnSrvK, SrvK) .
 
     crl [out] :
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK}
-          | M[sched SpdM {CM1, CM2, CM3, SrvM, UnSrvM} | R |
-            N[sched SpdN {CN1, CN2, CN3, SrvN, UnSrvN} | out(M) . P | Q]] | U]
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
+          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R |
+            N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | out(M) . P | Q]] | U]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, N)}
-          | N[sched SpdN {CN1, CN2, CN3, SrvN, (UnSrvN, barb(P))} | P | Q]
-          | M[sched SpdM {CM1, CM2, CM3, (SrvM \ N), (UnSrvM \ N)} | R] | U]
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))} | P | Q]
+          | M[sched SpdM {InM, OutM, RestM, (SrvM \ N), (UnSrvM \ N)} | R] | U]
       if  N in (SrvM, UnSrvM) .
 
     crl [consumption] :
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK} | c . P | R]
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK} | c . P | R]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, (c . P))} | R]
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, (c . P))} | R]
       if SpdK > 0 .
 
     rl [empty]:
-        K[sched SpdK {CK1, 0, 0, empty, empty} | tick | R]
+        K[sched SpdK {InK, 0, 0, empty, empty} | tick | R]
       =>
-        K[sched SpdK {s(CK1), 0, 0, empty, empty} | R] .
+        K[sched SpdK {s(InK), 0, 0, empty, empty} | R] .
 
     crl [tick]:
-        K[sched SpdK {CK1, 0, 0, UnSrvK, SrvK} | tick | R]
+        K[sched SpdK {InK, 0, 0, UnSrvK, SrvK} | tick | R]
       =>
-        K[sched SpdK {s(CK1), CN2, CN3, UnSrvK, SrvK} | R]
-      if  CN2 CN3 := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
+        K[sched SpdK {s(InK), OutN, RestN, UnSrvK, SrvK} | R]
+      if  OutN RestN := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
 
     crl [new-round] :
-        K[sched SpdK {CK1, CK2, CK3, empty, SrvK} | R]
+        K[sched SpdK {InK, OutK, RestK, empty, SrvK} | R]
       =>
-        K[sched SpdK {CK1, CK2, CK3, SrvK, empty} | R]
+        K[sched SpdK {InK, OutK, RestK, SrvK, empty} | R]
       if | SrvK | > 0 .
 
     crl [primary-tock-consume] :
-        K[sched SpdK {CK1, s(CK2), CK3, UnSrvK, SrvK} | R]
+        K[sched SpdK {InK, s(OutK), RestK, UnSrvK, SrvK} | R]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvN, SrvK} | R | P]
+        K[sched SpdK {InK, OutK, RestK, UnSrvN, SrvK} | R | P]
       if  (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
     rl [primary-tock-ambient] :
-        K[sched SpdK {CK1, s(CK2), CK3, (UnSrvK, N), SrvK} | N[Sc | Q] | R]
+        K[sched SpdK {InK, s(OutK), RestK, (UnSrvK, N), SrvK} | N[Sc | Q] | R]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R] .
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R] .
 
     crl [secondary-tock-consume1] :
-        K[sched SpdK {CK1, CK2, s(CK3), UnSrvK, SrvK} | R]
+        K[sched SpdK {InK, OutK, s(RestK), UnSrvK, SrvK} | R]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvN, SrvK} | R | P]
-      if  CK1 rem getFraction(s(CK3), SpdK) == 0 /\
+        K[sched SpdK {InK, OutK, RestK, UnSrvN, SrvK} | R | P]
+      if  InK rem getFraction(s(RestK), SpdK) == 0 /\
           (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
     crl [secondary-tock-ambient1] :
-        K[sched SpdK {CK1, CK2, s(CK3), (UnSrvK, N), SrvK} | N[Sc | Q] | R]
+        K[sched SpdK {InK, OutK, s(RestK), (UnSrvK, N), SrvK} | N[Sc | Q] | R]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R]
-      if CK1 rem getFraction(s(CK3), SpdK) == 0 .
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R]
+      if InK rem getFraction(s(RestK), SpdK) == 0 .
 
     crl [secondary-tock-no-action] :
-        K[sched SpdK {CK1, CK2, s(CK3), UnSrvK, SrvK} | P]
+        K[sched SpdK {InK, OutK, s(RestK), UnSrvK, SrvK} | P]
       =>
-        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK} | P]
-      if  CK1 rem getFraction(s(CK3), SpdK) =/= 0 .
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK} | P]
+      if  InK rem getFraction(s(RestK), SpdK) =/= 0 .
 endm
 
 mod VTA-FORMULA is
@@ -265,7 +265,7 @@ mod VTA-FORMULA is
     eq allsubs'(X, empty, F) = True .
     eq allsubs'(X, (N, NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
 
-    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars InN OutN RestN InM OutM RestM InK OutK RestK : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
@@ -280,11 +280,11 @@ mod VTA-FORMULA is
     eq consumptions(P) = false [owise] .
 
     op accumulatespeed : Schedule TimedProcess -> TimedProcess .
-    eq accumulatespeed(sched SpdK{CK1, CK2, CK3, UnSrvK, SrvK},
-          (N[sched SpdN {CN1, CN2, CN3, SrvN, UnSrvN} | P] | Q))
+    eq accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK},
+          (N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | P] | Q))
       =
-        N[sched SpdK * SpdN{CN1, CN2, CN3, SrvN, UnSrvN} | P] |
-        accumulatespeed(sched SpdK{CK1, CK2, CK3, UnSrvK, SrvK}, Q) .
+        N[sched SpdK * SpdN{InN, OutN, RestN, SrvN, UnSrvN} | P] |
+        accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK}, Q) .
     ceq accumulatespeed(Sc, P | Q) = accumulatespeed(Sc, P) | accumulatespeed(Sc, Q)
       if P =/= dead and Q =/= dead .
     eq accumulatespeed(Sc, P) = dead [owise] .
@@ -305,8 +305,8 @@ mod VTA-FORMULA is
     op time : TimedProcess Name -> Nat .
     ceq time(P | Q, X) = max(time(P, X), time(Q, X))
       if P =/= dead and Q =/= dead .
-    eq time(N[sched Speed {CN1, CN2, CN3, SrvN, UnSrvN} | P], X) =
-        if N == X then CN1 else time(P, X) fi .
+    eq time(N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P], X) =
+        if N == X then InN else time(P, X) fi .
     eq time(P, X) = 0 [owise] .
 
     op distance : TimedProcess TimedProcess Name -> Nat .
@@ -351,13 +351,13 @@ mod VTA-SATISFACTION is
     var Ps : Set{Servable} .
     vars R : Rat .
     vars A : Nat .
-    vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
+    vars InN OutN RestN InM OutM RestM InK OutK RestK : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
     op somewhere : Set{Servable} Rat Nat Formula -> Bool .
-    eq somewhere((N[sched Speed {CN1, CN2, CN3, SrvN, UnSrvN} | P], Ps), R, A, F) =
-        ((N[sched Speed {CN1, CN2, CN3, SrvN, UnSrvN} | P] |= F)
+    eq somewhere((N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P], Ps), R, A, F) =
+        ((N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P] |= F)
           and (Speed >= R)
           and (| SrvN, UnSrvN | <= A))
         or somewhere(Ps, R, A, F) .
