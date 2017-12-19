@@ -144,14 +144,16 @@ mod TIMED-PROCESS is
           | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
         K[sched SpdK {InK, OutK, RestK, (UnSrvK \ N), (SrvK \ N)}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, (UnSrvM, N)} | R |
-            N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))} | P | Q]] | U]
+          | M[sched SpdM {InM, OutM, RestM, SrvM, (UnSrvM, N)} | R
+            | N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))}
+              | P | Q]] | U]
       if  N in (UnSrvK, SrvK) .
 
     crl [out] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R |
-            N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | out(M) . P | Q]] | U]
+          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R
+            | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN}
+              | out(M) . P | Q]] | U]
       =>
         K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
           | N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))} | P | Q]
