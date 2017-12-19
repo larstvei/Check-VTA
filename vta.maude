@@ -21,7 +21,7 @@ endfm
 fmod VTA-SORTS is
     pr NAME .
 
-    sorts Clock Tick Servable TimedProcess .
+    sorts Schedule Tick Servable TimedProcess .
     subsort Tick < TimedProcess .
     subsort TimedProcess Name < Servable .
 endfm
@@ -38,18 +38,18 @@ fmod VTA-OPS is
 
     op tick : -> Tick .
 
-    op dummyclock : -> Clock .
-    op clock : Nat Nat Nat Rat Set{Servable} Set{Servable} -> Clock .
+    op dummysched : -> Schedule .
+    op sched_{_,_,_,_,_} : Rat Nat Nat Nat Set{Servable} Set{Servable} -> Schedule .
 
     op dead : -> TimedProcess [ctor] .
     op _|_ : TimedProcess TimedProcess -> TimedProcess [id: dead assoc comm prec 90] .
     op _._ : Capability TimedProcess -> TimedProcess [prec 80] .
-    op _[_|_] : Name Clock TimedProcess -> TimedProcess [prec 70 format (ni+ d d d d d -)] .
+    op _[_|_] : Name Schedule TimedProcess -> TimedProcess [prec 70 format (ni+ d d d d d -)] .
 
     var Unserved : Set{Servable} .
     vars P Q : TimedProcess .
     var Ca : Capability .
-    var Cl : Clock .
+    var Sc : Schedule .
     var N : Name .
 
     op names : Capability -> Set{Servable} .
@@ -62,12 +62,12 @@ fmod VTA-OPS is
     eq names(dead) = empty .
     eq names(tick) = empty .
     eq names(Ca . P) = names(Ca), names(P) .
-    eq names(N[Cl | P]) = N, names(P) .
+    eq names(N[Sc | P]) = N, names(P) .
     ceq names(P | Q) = names(P), names(Q) if P =/= dead and Q =/= dead .
 
     op barb : TimedProcess -> Set{Servable} .
     eq barb(Ca . P | Q) = barb(Q) .
-    eq barb(N[Cl | P] | Q) = N, barb(Q) .
+    eq barb(N[Sc | P] | Q) = N, barb(Q) .
     eq barb(P) = empty [owise] .
 
     op getConsume : Set{Servable} -> Servable .
@@ -123,94 +123,94 @@ mod TIMED-PROCESS is
     vars N M K : Name .
     vars CN1 CN2 CN3 CM1 CM2 CM3 CK1 CK2 CK3 : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
-    vars Cl Cl1 Cl2 Cl3 : Clock .
+    vars Sc Sc1 Sc2 Sc3 : Schedule .
     var Ca : Capability .
     vars P Q R U : TimedProcess .
     vars Served Unserved : Set{Servable} .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
     crl [open] :
-        M[clock(CM1, CM2, CM3, Speed, Unserved, Served)
-          | open(N) . P | N[Cl | R] | Q]
+        M[sched Speed {CM1, CM2, CM3, Unserved, Served}
+          | open(N) . P | N[Sc | R] | Q]
       =>
-        M[clock(CM1, CM2, CM3, Speed, UnSrvM, SrvM) | P | Q | R]
+        M[sched Speed {CM1, CM2, CM3, UnSrvM, SrvM} | P | Q | R]
       if  UnSrvM := (Unserved \ N) /\
           SrvM := (Served \ N), barb(P), barb(R) /\
           N in (Served, Unserved) .
 
     crl [in] :
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
-          | N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | in(M) . P | Q]
-          | M[clock(CM1, CM2, CM3, SpdM, SrvM, UnSrvM) | R] | U]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK}
+          | N[sched SpdN {CN1, CN2, CN3, SrvN, UnSrvN} | in(M) . P | Q]
+          | M[sched SpdM {CM1, CM2, CM3, SrvM, UnSrvM} | R] | U]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, (UnSrvK \ N), (SrvK \ N))
-          | M[clock(CM1, CM2, CM3, SpdM, SrvM, (UnSrvM, N)) | R |
-            N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]] | U]
+        K[sched SpdK {CK1, CK2, CK3, (UnSrvK \ N), (SrvK \ N)}
+          | M[sched SpdM {CM1, CM2, CM3, SrvM, (UnSrvM, N)} | R |
+            N[sched SpdN {CN1, CN2, CN3, SrvN, (UnSrvN, barb(P))} | P | Q]] | U]
       if  N in (UnSrvK, SrvK) .
 
     crl [out] :
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK)
-          | M[clock(CM1, CM2, CM3, SpdM, SrvM, UnSrvM) | R |
-            N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | out(M) . P | Q]] | U]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK}
+          | M[sched SpdM {CM1, CM2, CM3, SrvM, UnSrvM} | R |
+            N[sched SpdN {CN1, CN2, CN3, SrvN, UnSrvN} | out(M) . P | Q]] | U]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N))
-          | N[clock(CN1, CN2, CN3, SpdN, SrvN, (UnSrvN, barb(P))) | P | Q]
-          | M[clock(CM1, CM2, CM3, SpdM, (SrvM \ N), (UnSrvM \ N)) | R] | U]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, N)}
+          | N[sched SpdN {CN1, CN2, CN3, SrvN, (UnSrvN, barb(P))} | P | Q]
+          | M[sched SpdM {CM1, CM2, CM3, (SrvM \ N), (UnSrvM \ N)} | R] | U]
       if  N in (SrvM, UnSrvM) .
 
     crl [consumption] :
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | c . P | R]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK} | c . P | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, (c . P))) | R]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, (c . P))} | R]
       if SpdK > 0 .
 
     rl [empty]:
-        K[clock(CK1, 0, 0, SpdK, empty, empty) | tick | R]
+        K[sched SpdK {CK1, 0, 0, empty, empty} | tick | R]
       =>
-        K[clock(s(CK1), 0, 0, SpdK, empty, empty) | R] .
+        K[sched SpdK {s(CK1), 0, 0, empty, empty} | R] .
 
     crl [tick]:
-        K[clock(CK1, 0, 0, SpdK, UnSrvK, SrvK) | tick | R]
+        K[sched SpdK {CK1, 0, 0, UnSrvK, SrvK} | tick | R]
       =>
-        K[clock(s(CK1), CN2, CN3, SpdK, UnSrvK, SrvK) | R]
+        K[sched SpdK {s(CK1), CN2, CN3, UnSrvK, SrvK} | R]
       if  CN2 CN3 := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
 
     crl [new-round] :
-        K[clock(CK1, CK2, CK3, SpdK, empty, SrvK) | R]
+        K[sched SpdK {CK1, CK2, CK3, empty, SrvK} | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, SrvK, empty) | R]
+        K[sched SpdK {CK1, CK2, CK3, SrvK, empty} | R]
       if | SrvK | > 0 .
 
     crl [primary-tock-consume] :
-        K[clock(CK1, s(CK2), CK3, SpdK, UnSrvK, SrvK) | R]
+        K[sched SpdK {CK1, s(CK2), CK3, UnSrvK, SrvK} | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvN, SrvK) | R | P]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvN, SrvK} | R | P]
       if  (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
     rl [primary-tock-ambient] :
-        K[clock(CK1, s(CK2), CK3, SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
+        K[sched SpdK {CK1, s(CK2), CK3, (UnSrvK, N), SrvK} | N[Sc | Q] | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R] .
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R] .
 
     crl [secondary-tock-consume1] :
-        K[clock(CK1, CK2, s(CK3), SpdK, UnSrvK, SrvK) | R]
+        K[sched SpdK {CK1, CK2, s(CK3), UnSrvK, SrvK} | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvN, SrvK) | R | P]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvN, SrvK} | R | P]
       if  CK1 rem getFraction(s(CK3), SpdK) == 0 /\
           (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
     crl [secondary-tock-ambient1] :
-        K[clock(CK1, CK2, s(CK3), SpdK, (UnSrvK, N), SrvK) | N[Cl | Q] | R]
+        K[sched SpdK {CK1, CK2, s(CK3), (UnSrvK, N), SrvK} | N[Sc | Q] | R]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, (SrvK, N)) | N[Cl | tick | Q] | R]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R]
       if CK1 rem getFraction(s(CK3), SpdK) == 0 .
 
     crl [secondary-tock-no-action] :
-        K[clock(CK1, CK2, s(CK3), SpdK, UnSrvK, SrvK) | P]
+        K[sched SpdK {CK1, CK2, s(CK3), UnSrvK, SrvK} | P]
       =>
-        K[clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK) | P]
+        K[sched SpdK {CK1, CK2, CK3, UnSrvK, SrvK} | P]
       if  CK1 rem getFraction(s(CK3), SpdK) =/= 0 .
 endm
 
@@ -253,7 +253,7 @@ mod VTA-FORMULA is
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     eq F[N <- X] = F [owise] .
 
-    var Cl : Clock .
+    var Sc : Schedule .
     var Ca : Capability .
     vars P Q : TimedProcess .
     vars NS MS : Set{Servable} .
@@ -276,36 +276,36 @@ mod VTA-FORMULA is
     eq consumptions(open(N) . P) = consumptions(P) .
     ceq consumptions(P | Q) = consumptions(P) or consumptions(Q)
       if P =/= dead and Q =/= dead .
-    eq consumptions(N[Cl | P]) = consumptions(P) .
+    eq consumptions(N[Sc | P]) = consumptions(P) .
     eq consumptions(P) = false [owise] .
 
-    op accumulatespeed : Clock TimedProcess -> TimedProcess .
-    eq accumulatespeed(clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK),
-          (N[clock(CN1, CN2, CN3, SpdN, SrvN, UnSrvN) | P] | Q))
+    op accumulatespeed : Schedule TimedProcess -> TimedProcess .
+    eq accumulatespeed(sched SpdK{CK1, CK2, CK3, UnSrvK, SrvK},
+          (N[sched SpdN {CN1, CN2, CN3, SrvN, UnSrvN} | P] | Q))
       =
-        N[clock(CN1, CN2, CN3, SpdN * SpdK, SrvN, UnSrvN) | P] |
-        accumulatespeed(clock(CK1, CK2, CK3, SpdK, UnSrvK, SrvK), Q) .
-    ceq accumulatespeed(Cl, P | Q) = accumulatespeed(Cl, P) | accumulatespeed(Cl, Q)
+        N[sched SpdK * SpdN{CN1, CN2, CN3, SrvN, UnSrvN} | P] |
+        accumulatespeed(sched SpdK{CK1, CK2, CK3, UnSrvK, SrvK}, Q) .
+    ceq accumulatespeed(Sc, P | Q) = accumulatespeed(Sc, P) | accumulatespeed(Sc, Q)
       if P =/= dead and Q =/= dead .
-    eq accumulatespeed(Cl, P) = dead [owise] .
+    eq accumulatespeed(Sc, P) = dead [owise] .
 
     op sublocations : TimedProcess -> Set{Servable} .
     ceq sublocations(P | Q) = sublocations(P), sublocations(Q)
       if P =/= dead and Q =/= dead .
-    ceq sublocations(N[Cl | P]) = N[Cl | P], Q, sublocations(Q)
-      if Q := accumulatespeed(Cl, P) .
+    ceq sublocations(N[Sc | P]) = N[Sc | P], Q, sublocations(Q)
+      if Q := accumulatespeed(Sc, P) .
     eq sublocations(P) = P [owise] .
 
     op contains : TimedProcess Name -> Bool .
     ceq contains(P | Q, X) = contains(P, X) or contains(Q, X)
       if P =/= dead and Q =/= dead .
-    eq contains(N[Cl | P], X) = if N == X then true else contains(P, X) fi .
+    eq contains(N[Sc | P], X) = if N == X then true else contains(P, X) fi .
     eq contains(P, X) = false [owise] .
 
     op time : TimedProcess Name -> Nat .
     ceq time(P | Q, X) = max(time(P, X), time(Q, X))
       if P =/= dead and Q =/= dead .
-    eq time(N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P], X) =
+    eq time(N[sched Speed {CN1, CN2, CN3, SrvN, UnSrvN} | P], X) =
         if N == X then CN1 else time(P, X) fi .
     eq time(P, X) = 0 [owise] .
 
@@ -320,7 +320,7 @@ mod VTA-SATISFACTION is
     vars F G : Formula .
     vars P Q : TimedProcess .
     vars N X : Name .
-    var Cl : Clock .
+    var Sc : Schedule .
     var S : Nat .
 
     op _|=_ : TimedProcess Formula -> Bool [frozen prec 100] .
@@ -331,13 +331,13 @@ mod VTA-SATISFACTION is
     eq [Conjunction] : P |= F /\ G = (P |= F) and (P |= G) .
     eq [Disjunction] : P |= F \/ G = (P |= F) or (P |= G) .
     eq [Void] : dead |= void = true .
-    eq [Ambient] : N[Cl | P] |= X[F] = if N == X then P |= F else false fi .
+    eq [Ambient] : N[Sc | P] |= X[F] = if N == X then P |= F else false fi .
     eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
     eq [Consumption] : P |= Consume = consumptions(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
-    eq [LocalAdjunct] : P |= F @ N = N[dummyclock | P] |= F .
+    eq [LocalAdjunct] : P |= F @ N = N[dummysched | P] |= F .
 
     crl [Sometime] : P |= <> A @ X F => true
       if  contains(P, X) /\
@@ -356,8 +356,8 @@ mod VTA-SATISFACTION is
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
 
     op somewhere : Set{Servable} Rat Nat Formula -> Bool .
-    eq somewhere((N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P], Ps), R, A, F) =
-        ((N[clock(CN1, CN2, CN3, Speed, SrvN, UnSrvN) | P] |= F)
+    eq somewhere((N[sched Speed {CN1, CN2, CN3, SrvN, UnSrvN} | P], Ps), R, A, F) =
+        ((N[sched Speed {CN1, CN2, CN3, SrvN, UnSrvN} | P] |= F)
           and (Speed >= R)
           and (| SrvN, UnSrvN | <= A))
         or somewhere(Ps, R, A, F) .
@@ -365,47 +365,47 @@ mod VTA-SATISFACTION is
 endm
 
 --- Examples
-rew 'm[clock(0,0,0,0,'n,empty) | 'n[C1:Clock | 'p[C2:Clock | dead]]
-      | open('n) . 'q[C3:Clock | dead]] .
+rew 'm[sched 0 {0,0,0,'n,empty} | 'n[C1:Schedule | 'p[C2:Schedule | dead]]
+      | open('n) . 'q[C3:Schedule | dead]] .
 
-rew 'k[clock(0,0,0,0,('n,'m),empty)
-      | 'n[clock(0,0,0,0,empty,empty) | in('m) . dead]
-      | 'm[clock(0,0,0,0,empty,empty) | dead]] .
+rew 'k[sched 0 {0,0,0,('n,'m),empty}
+      | 'n[sched 0 {0,0,0,empty,empty} | in('m) . dead]
+      | 'm[sched 0 {0,0,0,empty,empty} | dead]] .
 
 
-rew 'k[clock(0,0,0,0,('m),empty)
-     | 'm[clock(0,0,0,0,('n),empty) | dead
-     | 'n[clock(0,0,0,0,empty,empty) | out('m) . dead]]] .
+rew 'k[sched 0 {0,0,0,('m),empty}
+     | 'm[sched 0 {0,0,0,('n),empty} | dead
+     | 'n[sched 0 {0,0,0,empty,empty} | out('m) . dead]]] .
 
-rew 'k[clock(0,0,0,1, empty, empty) | c . dead] .
+rew 'k[sched 1 {0,0,0, empty, empty} | c . dead] .
 
-rew 'k[clock(0,0,0,1, empty, empty) | tick] .
+rew 'k[sched 1 {0,0,0, empty, empty} | tick] .
 
-rew 'k[clock(0,0,0,1, 'n, empty) | tick] .
+rew 'k[sched 1 {0,0,0, 'n, empty} | tick] .
 
-rew 'k[clock(0,0,0,1, empty, 'n) | tick] .
+rew 'k[sched 1 {0,0,0, empty, 'n} | tick] .
 
-rew 'k[clock(0,1,0,1, (c . P:TimedProcess), 'n) | dead] .
+rew 'k[sched 1 {0,1,0, (c . P:TimedProcess), 'n} | dead] .
 
-rew 'k[clock(0,1,0,1, 'n, empty) | 'n[Cl:Clock | P:TimedProcess]] .
+rew 'k[sched 1 {0,1,0, 'n, empty} | 'n[Sc:Schedule | P:TimedProcess]] .
 
-rew 'k[clock(3,0,1,1/3, (c . P:TimedProcess), 'n) | dead] .
+rew 'k[sched 1/3 {3,0,1, (c . P:TimedProcess), 'n} | dead] .
 
-rew 'k[clock(0,0,0,4/3,'n,empty) | c . c . dead
-      | 'n[clock(0,0,0,1/2,empty,empty) | c . dead]
+rew 'k[sched 4/3 {0,0,0,'n,empty} | c . c . dead
+      | 'n[sched 1/2 {0,0,0,empty,empty} | c . dead]
       | tick | tick | tick] .
 
 --- should be false:
 rew
-'k[clock(0,0,0,1,('vm,'r),empty) |
-'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
-| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+'k[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
 
 |
 
-'n[clock(0,0,0,1,('vm,'r),empty) |
-'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
-| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+'n[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
 
 
 |= 'n[True] | (<> 1 @ 'vm 'k[True | 'done[True]]) .
@@ -413,46 +413,46 @@ rew
 --- should be true:
 rew
 
-'k[clock(0,0,0,1,('vm,'r),empty) |
-'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
-| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+'k[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
 
 |
 
-'n[clock(0,0,0,1,('vm,'r),empty) |
-'vm[clock(0,0,0,1/2,empty,empty) | tick | tick | open('r) . dead]
-| 'r[clock(0,0,0,0,empty,empty) | in('vm) . c . 'done[clock(0,0,0,0,empty,empty) | out('vm) . dead]]]
+'n[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
 
 
 |= 'n[True] | (<> 2 @ 'vm 'k[True | 'done[True]]) .
 
 rew
 
- 'root[clock(0, 0, 0, 1, 'request, 'vm) | tick | tick |
-  'request[clock(0, 0, 0, 0, empty, empty) | in('vm) . c . dead] |
-  'vm[clock(0, 0, 0, 3/4, empty, empty) | open('request) . dead]]
+ 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
 
    |= <> 2 @ 'vm ~ Consume .
 
 rew
 
- 'root[clock(0, 0, 0, 1, 'request, 'vm) | tick | tick |
-  'request[clock(0, 0, 0, 0, empty, empty) | in('vm) . c . dead] |
-  'vm[clock(0, 0, 0, 3/4, empty, empty) | open('request) . dead]]
+ 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
 
    |= ~ (all X . (~ (<> 2 @ X ~ Consume))) .
 
 rew
-'root[clock(0, 0, 0, 1, 'request, 'vm) | tick | tick |
- 'request[clock(0, 0, 0, 0, empty, empty) | in('vm) . c . dead] |
-  'vm[clock(0, 0, 0, 3/4, empty, empty) | open('request) . dead]]
+'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+ 'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
 
   |= ~ <> 2 @ 'request ~ Consume .
 
 rew
 
- 'root[clock(0, 0, 0, 1, 'request, 'vm) | tick | tick |
-  'request[clock(0, 0, 0, 0, empty, empty) | in('vm) . c . dead] |
-  'vm[clock(0, 0, 0, 3/4, empty, empty) | open('request) . dead]]
+ 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
 
    |= (<> 2 @ 'vm (<> 2 @ 'vm True)) .
