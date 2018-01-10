@@ -144,10 +144,10 @@ mod TIMED-PROCESS is
           | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
         K[sched SpdK {InK, OutK, RestK, (UnSrvK \ N), (SrvK \ N)}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, (UnSrvM, N)} | R
-            | N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))}
+          | M[sched SpdM {InM, OutM, RestM, SrvM, union(UnSrvM, N)} | R
+            | N[sched SpdN {InN, OutN, RestN, SrvN, union(UnSrvN, barb(P))}
               | P | Q]] | U]
-      if  N in (UnSrvK, SrvK) .
+      if  N in union(UnSrvK, SrvK) .
 
     crl [out] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
