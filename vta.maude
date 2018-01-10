@@ -316,7 +316,7 @@ mod VTA-FORMULA is
 endm
 
 mod VTA-SATISFACTION is
-    pr TIMED-PROCESS .
+    pr VTA-CALCULUS .
     pr VTA-FORMULA .
 
     vars F G : Formula .
