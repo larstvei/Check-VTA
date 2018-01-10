@@ -41,8 +41,8 @@ fmod VTA-OPS is
     op dummysched : -> Scheduler .
     op sched_{_,_,_,_,_} : Rat Nat Nat Nat Set{Servable} Set{Servable} -> Scheduler .
 
-    op dead : -> VTA [ctor] .
-    op _|_ : VTA VTA -> VTA [id: dead assoc comm prec 90] .
+    op zero : -> VTA [ctor] .
+    op _|_ : VTA VTA -> VTA [id: zero assoc comm prec 90] .
     op _._ : Capability VTA -> VTA [prec 80] .
     op _[_|_] : Name Scheduler VTA -> VTA [prec 70 format (ni+ d d d d d -)] .
 
@@ -59,11 +59,11 @@ fmod VTA-OPS is
     eq names(open(N)) = N .
 
     op names : VTA -> Set{Servable} .
-    eq names(dead) = empty .
+    eq names(zero) = empty .
     eq names(tick) = empty .
     eq names(Ca . P) = names(Ca), names(P) .
     eq names(N[Sc | P]) = N, names(P) .
-    ceq names(P | Q) = names(P), names(Q) if P =/= dead and Q =/= dead .
+    ceq names(P | Q) = names(P), names(Q) if P =/= zero and Q =/= zero .
 
     op barb : VTA -> Set{Servable} .
     eq barb(Ca . P | Q) = barb(Q) .
@@ -112,7 +112,7 @@ fmod EGYPTIAN is
     eq getFraction(X, R) = 1 / get(s(X), egyptian(R)) .
 endfm
 
-mod TIMED-PROCESS is
+mod VTA-CALCULUS is
     pr INT .
     pr RAT .
     pr BOOL .
@@ -217,7 +217,7 @@ mod TIMED-PROCESS is
 endm
 
 mod VTA-FORMULA is
-    pr TIMED-PROCESS .
+    pr VTA-CALCULUS .
     pr BOOL .
 
     sort Formula .
@@ -277,7 +277,7 @@ mod VTA-FORMULA is
     eq consumptions(out(N) . P) = consumptions(P) .
     eq consumptions(open(N) . P) = consumptions(P) .
     ceq consumptions(P | Q) = consumptions(P) or consumptions(Q)
-      if P =/= dead and Q =/= dead .
+      if P =/= zero and Q =/= zero .
     eq consumptions(N[Sc | P]) = consumptions(P) .
     eq consumptions(P) = false [owise] .
 
@@ -288,25 +288,25 @@ mod VTA-FORMULA is
         N[sched SpdK * SpdN{InN, OutN, RestN, SrvN, UnSrvN} | P] |
         accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK}, Q) .
     ceq accumulatespeed(Sc, P | Q) = accumulatespeed(Sc, P) | accumulatespeed(Sc, Q)
-      if P =/= dead and Q =/= dead .
-    eq accumulatespeed(Sc, P) = dead [owise] .
+      if P =/= zero and Q =/= zero .
+    eq accumulatespeed(Sc, P) = zero [owise] .
 
     op sublocations : VTA -> Set{Servable} .
     ceq sublocations(P | Q) = sublocations(P), sublocations(Q)
-      if P =/= dead and Q =/= dead .
+      if P =/= zero and Q =/= zero .
     ceq sublocations(N[Sc | P]) = N[Sc | P], Q, sublocations(Q)
       if Q := accumulatespeed(Sc, P) .
     eq sublocations(P) = P [owise] .
 
     op contains : VTA Name -> Bool .
     ceq contains(P | Q, X) = contains(P, X) or contains(Q, X)
-      if P =/= dead and Q =/= dead .
+      if P =/= zero and Q =/= zero .
     eq contains(N[Sc | P], X) = if N == X then true else contains(P, X) fi .
     eq contains(P, X) = false [owise] .
 
     op time : VTA Name -> Nat .
     ceq time(P | Q, X) = max(time(P, X), time(Q, X))
-      if P =/= dead and Q =/= dead .
+      if P =/= zero and Q =/= zero .
     eq time(N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P], X) =
         if N == X then InN else time(P, X) fi .
     eq time(P, X) = 0 [owise] .
@@ -367,19 +367,19 @@ mod VTA-SATISFACTION is
 endm
 
 --- Examples
-rew 'm[sched 0 {0,0,0,'n,empty} | 'n[C1:Scheduler | 'p[C2:Scheduler | dead]]
-      | open('n) . 'q[C3:Scheduler | dead]] .
+rew 'm[sched 0 {0,0,0,'n,empty} | 'n[C1:Scheduler | 'p[C2:Scheduler | zero]]
+      | open('n) . 'q[C3:Scheduler | zero]] .
 
 rew 'k[sched 0 {0,0,0,('n,'m),empty}
-      | 'n[sched 0 {0,0,0,empty,empty} | in('m) . dead]
-      | 'm[sched 0 {0,0,0,empty,empty} | dead]] .
+      | 'n[sched 0 {0,0,0,empty,empty} | in('m) . zero]
+      | 'm[sched 0 {0,0,0,empty,empty} | zero]] .
 
 
 rew 'k[sched 0 {0,0,0,('m),empty}
-     | 'm[sched 0 {0,0,0,('n),empty} | dead
-     | 'n[sched 0 {0,0,0,empty,empty} | out('m) . dead]]] .
+     | 'm[sched 0 {0,0,0,('n),empty} | zero
+     | 'n[sched 0 {0,0,0,empty,empty} | out('m) . zero]]] .
 
-rew 'k[sched 1 {0,0,0, empty, empty} | c . dead] .
+rew 'k[sched 1 {0,0,0, empty, empty} | c . zero] .
 
 rew 'k[sched 1 {0,0,0, empty, empty} | tick] .
 
@@ -387,27 +387,27 @@ rew 'k[sched 1 {0,0,0, 'n, empty} | tick] .
 
 rew 'k[sched 1 {0,0,0, empty, 'n} | tick] .
 
-rew 'k[sched 1 {0,1,0, (c . P:VTA), 'n} | dead] .
+rew 'k[sched 1 {0,1,0, (c . P:VTA), 'n} | zero] .
 
 rew 'k[sched 1 {0,1,0, 'n, empty} | 'n[Sc:Scheduler | P:VTA]] .
 
-rew 'k[sched 1/3 {3,0,1, (c . P:VTA), 'n} | dead] .
+rew 'k[sched 1/3 {3,0,1, (c . P:VTA), 'n} | zero] .
 
-rew 'k[sched 4/3 {0,0,0,'n,empty} | c . c . dead
-      | 'n[sched 1/2 {0,0,0,empty,empty} | c . dead]
+rew 'k[sched 4/3 {0,0,0,'n,empty} | c . c . zero
+      | 'n[sched 1/2 {0,0,0,empty,empty} | c . zero]
       | tick | tick | tick] .
 
 --- should be false:
 rew
 'k[sched 1 {0,0,0,('vm,'r),empty} |
-'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
-| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
 
 |
 
 'n[sched 1 {0,0,0,('vm,'r),empty} |
-'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
-| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
 
 
 |= 'n[True] | (<> 1 @ 'vm 'k[True | 'done[True]]) .
@@ -416,14 +416,14 @@ rew
 rew
 
 'k[sched 1 {0,0,0,('vm,'r),empty} |
-'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
-| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
 
 |
 
 'n[sched 1 {0,0,0,('vm,'r),empty} |
-'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . dead]
-| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . dead]]]
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
 
 
 |= 'n[True] | (<> 2 @ 'vm 'k[True | 'done[True]]) .
@@ -431,30 +431,30 @@ rew
 rew
 
  'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
-  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
-  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
 
    |= <> 2 @ 'vm ~ Consume .
 
 rew
 
  'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
-  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
-  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
 
    |= ~ (all X . (~ (<> 2 @ X ~ Consume))) .
 
 rew
 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
- 'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
-  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
+ 'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
 
   |= ~ <> 2 @ 'request ~ Consume .
 
 rew
 
  'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
-  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . dead] |
-  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . dead]]
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
 
    |= (<> 2 @ 'vm (<> 2 @ 'vm True)) .
