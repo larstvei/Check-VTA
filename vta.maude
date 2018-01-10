@@ -332,7 +332,7 @@ mod VTA-SATISFACTION is
     eq [Negation] : P |= ~ F = not (P |= F) .
     eq [Conjunction] : P |= F /\ G = (P |= F) and (P |= G) .
     eq [Disjunction] : P |= F \/ G = (P |= F) or (P |= G) .
-    eq [Void] : dead |= void = true .
+    eq [Void] : zero |= void = true .
     eq [Ambient] : N[Sc | P] |= X[F] = if N == X then P |= F else false fi .
     eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
@@ -344,8 +344,8 @@ mod VTA-SATISFACTION is
     crl [Sometime] : P |= <> A @ X F => true
       if  contains(P, X) /\
           P => Q /\
-          distance(P, Q, N) <= A /\
-          contains(Q, N) /\
+          distance(P, Q, X) <= A /\
+          contains(Q, X) /\
           Q |= F => true .
 
     rl [Sometime-else] : P |= F => false .
