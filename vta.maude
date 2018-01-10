@@ -344,9 +344,9 @@ mod VTA-SATISFACTION is
     crl [Sometime] : P |= <> A @ X F => true
       if  contains(P, X) /\
           P => Q /\
-          contains(Q, X) /\
-          Q |= F => true /\
-          distance(P, Q, X) <= A .
+          distance(P, Q, N) <= A /\
+          contains(Q, N) /\
+          Q |= F => true .
 
     rl [Sometime-else] : P |= F => false .
 
