@@ -30,7 +30,7 @@ of which the perhaps most useful is `rew`. The following is an example of using
 the `rew` command:
 
 ```
-rew
+Maude> rew
 'root[ sched 1 {0, 0, 0, 'request, 'vm}
      | tick | tick
      | 'request[ sched  0 {0, 0, 0, empty, empty}
