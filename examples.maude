@@ -1,0 +1,116 @@
+--- Examples
+rew 'm[sched 0 {0,0,0,'n,empty} | 'n[C1:Scheduler | 'p[C2:Scheduler | zero]]
+      | open('n) . 'q[C3:Scheduler | zero]] .
+
+rew 'k[sched 0 {0,0,0,('n,'m),empty}
+      | 'n[sched 0 {0,0,0,empty,empty} | in('m) . zero]
+      | 'm[sched 0 {0,0,0,empty,empty} | zero]] .
+
+
+rew 'k[sched 0 {0,0,0,('m),empty}
+     | 'm[sched 0 {0,0,0,('n),empty} | zero
+     | 'n[sched 0 {0,0,0,empty,empty} | out('m) . zero]]] .
+
+rew 'k[sched 1 {0,0,0, empty, empty} | c . zero] .
+
+rew 'k[sched 1 {0,0,0, empty, empty} | tick] .
+
+rew 'k[sched 1 {0,0,0, 'n, empty} | tick] .
+
+rew 'k[sched 1 {0,0,0, empty, 'n} | tick] .
+
+rew 'k[sched 1 {0,1,0, (c . P:VTA), 'n} | zero] .
+
+rew 'k[sched 1 {0,1,0, 'n, empty} | 'n[Sc:Scheduler | P:VTA]] .
+
+rew 'k[sched 1/3 {3,0,1, (c . P:VTA), 'n} | zero] .
+
+rew 'k[sched 4/3 {0,0,0,'n,empty} | c . c . zero
+      | 'n[sched 1/2 {0,0,0,empty,empty} | c . zero]
+      | tick | tick | tick] .
+
+--- should be false:
+rew
+'k[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
+
+|
+
+'n[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
+
+
+|= 'n[True] | (<> 1 @ 'vm 'k[True | 'done[True]]) .
+
+--- should be true:
+rew
+
+'k[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
+
+|
+
+'n[sched 1 {0,0,0,('vm,'r),empty} |
+'vm[sched 1/2 {0,0,0,empty,empty} | tick | tick | open('r) . zero]
+| 'r[sched 0 {0,0,0,empty,empty} | in('vm) . c . 'done[sched 0 {0,0,0,empty,empty} | out('vm) . zero]]]
+
+
+|= 'n[True] | (<> 2 @ 'vm 'k[True | 'done[True]]) .
+
+rew
+
+ 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
+
+   |= <> 2 @ 'vm ~ Consume .
+
+rew
+
+ 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
+
+   |= ~ (all X . (~ (<> 2 @ X ~ Consume))) .
+
+rew
+'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+ 'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
+
+  |= ~ <> 2 @ 'request ~ Consume .
+
+rew
+
+ 'root[sched 1 {0, 0, 0, 'request, 'vm} | tick | tick |
+  'request[sched 0 {0, 0, 0, empty, empty} | in('vm) . c . zero] |
+  'vm[sched 3/4 {0, 0, 0, empty, empty} | open('request) . zero]]
+
+|= (<> 2 @ 'vm (<> 2 @ 'vm True)) .
+
+--- should mention in, out and open before, but not after change:
+red
+sublocations(
+'a[sched 2 {0,0,0, ('b, 'c) ,empty}
+| 'b[sched 1/2 {0,0,0, empty ,empty} | out('a) . zero ]
+| 'c[sched 1/3 {0,0,0,'d, empty}| in('b) . zero
+| 'd[sched 1 {0,0,0, empty, empty}| zero] | open('d) . zero] ]) .
+
+--- should be false:
+rew
+'vm[sched 1 {0,0,0,empty,empty} | zero]   |= <> 1 0 'vm[True] .
+
+--- should be true:
+rew
+'vm[sched 2 {0,0,0,empty,empty} | zero]   |= <> 2 0 void .
+
+--- should be false:
+rew
+'vm[sched 2 {0,0,0,empty,empty} | zero]   |= <> 3 0 void .
+
+--- should be true:
+rew
+'root[ sched 1/2 {0,0,0,empty,'vm} | 'vm[sched 1/3 {0,0,0,empty,empty} | zero] ] |= <> 1/3 1 'vm[True] .
