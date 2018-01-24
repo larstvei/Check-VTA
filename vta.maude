@@ -366,3 +366,48 @@ mod VTA-SATISFACTION is
         or somewhere(Ps, R, A, F) .
     eq somewhere(Ps, R, A, F) = false [owise] .
 endm
+
+view Formula from TRIV to VTA-FORMULA is
+    sort Elt to Formula .
+endv
+
+mod RESOURCE-AWARE is
+    pr VTA-SATISFACTION .
+    pr SET{Formula} .
+
+    op {_} : VTA -> VTA .
+    op {_,_} : VTA Formula -> VTA .
+    op _?_ : Formula VTA -> VTA .
+
+    vars P Q R : VTA .
+    vars G F : Formula .
+    var Gs : Set{Formula} .
+    var N : Name .
+    var Sdl : Scheduler .
+
+    op findGuards : VTA -> Set{Formula} .
+    eq findGuards(zero) = empty .
+    eq findGuards(G ? P) = G .
+    ceq findGuards(P | Q) = union(findGuards(P), findGuards(Q)) if P =/= zero /\ Q =/= zero .
+    eq findGuards(N[Sdl | P]) = findGuards(P) .
+
+    op removeGuard : VTA Formula -> VTA .
+    eq removeGuard(zero, G) = zero .
+    eq removeGuard(G ? P, G) = P .
+    ceq removeGuard(F ? P, G) = F ? P if F =/= G .
+    ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
+    eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
+
+    op _contains_ : VTA VTA -> Bool .
+    ceq (Q | R) contains P = Q contains P or R contains P if Q =/= zero and R =/= zero .
+    eq P contains P = true .
+    eq Q contains P = false [owise] .
+
+    op !_ : VTA -> VTA .
+    crl { ! P | Q } => { ! P | P | Q } if not(Q contains P) .
+    crl N[Sdl | ! P | Q] => N[Sdl | ! P | P | Q] if not(Q contains P) .
+
+    crl { P } => { P, G } if G, Gs := findGuards(P) .
+    crl { P, G } => { removeGuard(P, G) } if P |= G => true .
+    crl { P, G } => { P } if P |= G => false .
+endm
