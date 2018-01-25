@@ -392,7 +392,7 @@ mod RESOURCE-AWARE is
     pr SET{Formula} .
 
     op {_} : VTA -> VTA .
-    op {_,_} : VTA Formula -> VTA .
+    op {_,_} : VTA Formula -> VTA [frozen] .
     op _?_ : Formula VTA -> VTA .
 
     vars P Q R : VTA .
@@ -414,6 +414,13 @@ mod RESOURCE-AWARE is
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
 
+    op removeGuardedProcess : VTA Formula -> VTA .
+    eq removeGuardedProcess(zero, G) = zero .
+    eq removeGuardedProcess(G ? P, G) = zero .
+    ceq removeGuardedProcess(F ? P, G) = F ? P if F =/= G .
+    ceq removeGuardedProcess(P | Q, G) = removeGuardedProcess(P, G) | removeGuardedProcess(Q, G) if P =/= zero /\ Q =/= zero .
+    eq removeGuardedProcess(N[Sdl | P], G) = N[Sdl | removeGuardedProcess(P, G)] .
+
     op _contains_ : VTA VTA -> Bool .
     ceq (Q | R) contains P = Q contains P or R contains P if Q =/= zero and R =/= zero .
     eq P contains P = true .
@@ -424,8 +431,9 @@ mod RESOURCE-AWARE is
     crl N[Sdl | ! P | Q] => N[Sdl | ! P | P | Q] if not(Q contains P) .
 
     crl { P } => { P, G } if G, Gs := findGuards(P) .
-    crl { P, G } => { removeGuard(P, G) } if P |= G => true .
-    crl { P, G } => { P } if P |= G => false .
+    crl { P, G } => { removeGuard(P, G) }
+      if removeGuardedProcess(P, G) |= G => true .
+    crl { P, G } => { P } if removeGuardedProcess(P, G) |= G => false .
 endm
 
 mod AUTO-SCALING-EXAMPLE is
