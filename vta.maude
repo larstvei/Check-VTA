@@ -232,6 +232,7 @@ mod VTA-FORMULA is
     op _[_] : Name Formula -> Formula [prec 10] .
     op _|_ : Formula Formula -> Formula [comm assoc] .
     op all_._ : Name Formula -> Formula .
+    op (+)_ : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
     op <>___ : Rat Nat Formula -> Formula [prec 53] .
     op _@_ : Formula Name -> Formula .
@@ -299,6 +300,12 @@ mod VTA-FORMULA is
       if Q := accumulatespeed(Sc, P) .
     eq sublocations(P) = P [owise] .
 
+    op siblings : VTA -> Set{Servable} .
+    ceq siblings(P | Q) = siblings(P), siblings(Q)
+      if P =/= zero and Q =/= zero .
+    eq siblings(N[Sc | P]) = N[Sc | P] .
+    eq siblings(P) = empty [owise] .
+
     op contains : VTA Name -> Bool .
     ceq contains(P | Q, X) = contains(P, X) or contains(Q, X)
       if P =/= zero and Q =/= zero .
@@ -338,6 +345,8 @@ mod VTA-SATISFACTION is
     eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
     eq [Consumption] : P |= Consume = consumptions(P) .
+    ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
+      if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[dummysched | P] |= F .
@@ -365,6 +374,11 @@ mod VTA-SATISFACTION is
           and (| SrvN, UnSrvN | <= A))
         or somewhere(Ps, R, A, F) .
     eq somewhere(Ps, R, A, F) = false [owise] .
+
+    op spatialnext : Set{Servable} Formula -> Bool .
+    eq spatialnext((N[Sc | P], Ps), F) =
+        (P |= F) or spatialnext(Ps, F) .
+    eq spatialnext(Ps, F) = false [owise] .
 endm
 
 view Formula from TRIV to VTA-FORMULA is
@@ -410,4 +424,13 @@ mod RESOURCE-AWARE is
     crl { P } => { P, G } if G, Gs := findGuards(P) .
     crl { P, G } => { removeGuard(P, G) } if P |= G => true .
     crl { P, G } => { P } if P |= G => false .
+endm
+
+mod AUTO-SCALING-EXAMPLE is
+    pr RESOURCE-AWARE .
+
+    var X : Name .
+
+    op full : Name -> Formula .
+    eq full(X) = ~(<> 1 @ X ~ Consume) .
 endm
