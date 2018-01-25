@@ -342,7 +342,6 @@ mod VTA-SATISFACTION is
     eq [Disjunction] : P |= F \/ G = (P |= F) or (P |= G) .
     eq [Void] : zero |= void = true .
     eq [Ambient] : N[Sc | P] |= X[F] = if N == X then P |= F else false fi .
-    eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
     eq [Consumption] : P |= Consume = consumptions(P) .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
@@ -350,6 +349,9 @@ mod VTA-SATISFACTION is
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[dummysched | P] |= F .
+
+    crl [Parallel] : P | Q |= F | G => true
+      if P |= F => true /\ Q |= G => true .
 
     crl [Sometime] : P |= <> A @ X F => true
       if  contains(P, X) /\
