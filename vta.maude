@@ -232,6 +232,7 @@ mod VTA-FORMULA is
     op _[_] : Name Formula -> Formula [prec 10] .
     op _|_ : Formula Formula -> Formula [comm assoc] .
     op all_._ : Name Formula -> Formula .
+    op exists_._ : Name Formula -> Formula .
     op (+)_ : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
     op <>___ : Rat Nat Formula -> Formula [prec 53] .
@@ -253,6 +254,7 @@ mod VTA-FORMULA is
     eq (F \/ G)[X <- N] = F[X <- N] \/ G[X <- N] .
     eq (F | G)[X <- N] = F[X <- N] | G[X <- N] .
     eq (all Y . F)[X <- N] = all Y . F[X <- N] .
+    eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     eq F[N <- X] = F [owise] .
 
@@ -343,6 +345,7 @@ mod VTA-SATISFACTION is
     eq [Void] : zero |= void = true .
     eq [Ambient] : N[Sc | P] |= X[F] = if N == X then P |= F else false fi .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
+    eq [Exists] : P |= exists X . F = P |= ~ (all X . (~ F)) .
     eq [Consumption] : P |= Consume = consumptions(P) .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
       if  Ps := siblings(P) .
