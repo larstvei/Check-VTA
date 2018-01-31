@@ -413,6 +413,10 @@ mod RESOURCE-AWARE is
     var S : String .
     var C : Char .
     var Sdl : Scheduler .
+    vars In Out Rest : Nat .
+    vars Speed : Rat .
+    vars Served Unserved : Set{Servable} .
+
 
     op findGuards : VTA -> Set{Formula} .
     eq findGuards(zero) = empty .
@@ -498,11 +502,17 @@ mod RESOURCE-AWARE is
     op !_ : VTA -> VTA .
     op !<_>_ : Set{Servable} VTA -> VTA .
     crl { ! P | Q } => { ! P | P | Q } if not(Q contains P) .
-    crl N[Sdl | ! P | Q] => N[Sdl | ! P | P | Q] if not(Q contains P) .
+    crl N[sched Speed {In, Out, Rest, Served, Unserved} | ! P | Q]
+      =>
+        N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | ! P | P | Q]
+      if not(Q contains P) .
 
     crl { !< Names > P | Q } => { !< Names > P | substitute(PrivateNames, P) | Q }
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
-    crl N[Sdl | !< Names > P | Q] => N[Sdl | !< Names > P | substitute(PrivateNames, P) | Q]
+    crl N[sched Speed {In, Out, Rest, Served, Unserved}| !< Names > P | Q]
+      =>
+        N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))}
+          | !< Names > P | substitute(PrivateNames, P) | Q]
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
 
     crl { P } => { P, G } if G, Gs := findGuards(P) .
@@ -569,13 +579,13 @@ mod AUTO-SCALING-EXAMPLE is
 
     op virtualMachine : Name -> VTA .
     eq virtualMachine(X) =
-        X[sched 1 {0, 0, 0, empty, empty}
-          | 'start[sdl | zero] | 'local_lock[sdl | zero]
+        X[sched 1 {0, 0, 0, empty, ('start,'isVM)}
+          | 'start[sdl | zero]
           | ! (open('request) . zero)
           | ! (open('restart_local) . zero) | 'isVM[sdl | zero] | open('cleaner) . zero
           | ! (open('start) . 'key[sdl | out(X) . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
           | ! (open('private_lock)
-            . 'decision[sdl | ((~ full(X) /\ parallel(X, 'request))
+            . 'decision[sdl('local_lock) | ((~ full(X) /\ parallel(X, 'request))
                 ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
               | ((~ full(X) /\ ~ parallel(X, 'request) \/ full(X) \/
                   (empty(X) /\ amount(MIN) \/ parallel(X, 'request)))
@@ -602,4 +612,15 @@ mod AUTO-SCALING-EXAMPLE is
 
     op request : Nat -> VTA .
     eq request(K) = 'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
+
+    op trash : -> VTA .
+    eq trash = 'trash[sdl | zero ] .
+
+    op asg : -> VTA .
+    eq asg = 'asg[sched 1 {0, 0, 0, empty, ('registry,'scaling_lock,'global_lock)}
+		| tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
+		| cleanUp | scaling | registry
+		| 'scaling_lock[ sdl | zero] | 'global_lock[sdl | zero]
+		|  ! (open('restart_global) . zero)] .
+
 endm
