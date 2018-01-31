@@ -40,6 +40,8 @@ fmod VTA-OPS is
 
     op sdl : -> Scheduler .
     eq sdl = sched 0 {0, 0, 0, empty, empty} .
+    op sdl : Set{Servable} -> Scheduler .
+    eq sdl(Unserved) = sched 0 {0, 0, 0, empty, Unserved} .
 
     op sched_{_,_,_,_,_} : Rat Nat Nat Nat Set{Servable} Set{Servable} -> Scheduler .
 
@@ -540,9 +542,9 @@ mod AUTO-SCALING-EXAMPLE is
     op delete : Name -> VTA .
     eq delete(X) =
         out(X) . out('asg) . in('trash)
-        . ('restart_global[sdl | out('trash) . in('asg)
+        . ('restart_global[sdl | out('decision) . out('trash) . in('asg)
             . ('global_lock[sdl | zero] | open('key) . zero)]
-          | 'restart_local[sdl | out('trash) . in('asg) . in(X)
+          | 'restart_local[sdl | out('decision) . out('trash) . in('asg) . in(X)
             . ('local_lock[sdl | in('decision) . zero]
               | 'start[sdl | zero])]) .
 
@@ -587,4 +589,17 @@ mod AUTO-SCALING-EXAMPLE is
           . ((exists('request) /\ (all 'x . (full('x) \/ ~ 'x has 'isVM))) /\ amount(sd(MAX, 1)))
           ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]]
             | open('registered) . (virtualMachine('vm) | 'scaling_lock[sdl | zero]))) .
+
+    op registry : -> VTA .
+    eq registry =
+        'registry[sdl('isRegistry)
+          | 'isRegistry[sdl | zero]
+          | ! (open('removal) . zero)] .
+
+    op consumes : Nat -> VTA .
+    eq consumes(0) = zero .
+    eq consumes(s K) = c . consumes(K) .
+
+    op request : Nat -> VTA .
+    eq request(K) = 'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
 endm
