@@ -426,7 +426,8 @@ mod RESOURCE-AWARE is
 
     op removeGuard : VTA Formula -> VTA .
     eq removeGuard(zero, G) = zero .
-    eq removeGuard(G ? P, G) = P .
+    eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
+        N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
@@ -565,9 +566,9 @@ mod AUTO-SCALING-EXAMPLE is
 
     op cleanUp : -> VTA .
     eq cleanUp =
-        ! 'cleaner[sdl | open('call_clean_up)
+        ! ('cleaner[sdl | open('call_clean_up)
           . open('deregistered) . out('asg)
-          . in('trash) . 'inTrash[sdl | zero]] .
+          . in('trash) . 'inTrash[sdl | zero]]) .
 
     op remove : Name -> VTA .
     eq remove(X) =
@@ -623,4 +624,6 @@ mod AUTO-SCALING-EXAMPLE is
 		| 'scaling_lock[ sdl | zero] | 'global_lock[sdl | zero]
 		|  ! (open('restart_global) . zero)] .
 
+    op example : -> VTA .
+    eq example = 'cloud[sdl(('asg, 'request, 'trash)) | asg | trash | request(1)] .
 endm
