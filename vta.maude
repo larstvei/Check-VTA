@@ -38,7 +38,9 @@ fmod VTA-OPS is
 
     op tick : -> Tick .
 
-    op dummysched : -> Scheduler .
+    op sdl : -> Scheduler .
+    eq sdl = sched 0 {0, 0, 0, empty, empty} .
+
     op sched_{_,_,_,_,_} : Rat Nat Nat Nat Set{Servable} Set{Servable} -> Scheduler .
 
     op zero : -> VTA [ctor] .
@@ -351,7 +353,7 @@ mod VTA-SATISFACTION is
       if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
-    eq [LocalAdjunct] : P |= F @ N = N[dummysched | P] |= F .
+    eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
 
     crl [Parallel] : P | Q |= F | G => true
       if P |= F => true /\ Q |= G => true .
@@ -393,6 +395,8 @@ endv
 mod RESOURCE-AWARE is
     pr VTA-SATISFACTION .
     pr SET{Formula} .
+    pr CONVERSION .
+    pr COUNTER .
 
     op {_} : VTA -> VTA .
     op {_,_} : VTA Formula -> VTA [frozen] .
@@ -400,8 +404,12 @@ mod RESOURCE-AWARE is
 
     vars P Q R : VTA .
     vars G F : Formula .
+    vars N M : Name .
     var Gs : Set{Formula} .
-    var N : Name .
+    var Ca : Capability .
+    var I : Nat .
+    var S : String .
+    var C : Char .
     var Sdl : Scheduler .
 
     op findGuards : VTA -> Set{Formula} .
@@ -424,14 +432,76 @@ mod RESOURCE-AWARE is
     ceq removeGuardedProcess(P | Q, G) = removeGuardedProcess(P, G) | removeGuardedProcess(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuardedProcess(N[Sdl | P], G) = N[Sdl | removeGuardedProcess(P, G)] .
 
+    op removeNumber : String -> String .
+    eq removeNumber(S) = removeNumber1(0, S) .
+
+    op removeNumber1 : Nat String -> String .
+    ceq removeNumber1(I, S) = S if s length(S) == I .
+    ceq removeNumber1(I, S) = removeNumber1(I, substr(S, 0, I) + substr(S, s I, length(S)))
+        if 48 <= ascii(substr(S, I, 1)) /\ ascii(substr(S, I, 1)) <= 57 .
+    eq removeNumber1(I, S) = removeNumber1(s I, S) [owise] .
+
+    op removeNumber : Name -> Name .
+    eq removeNumber(N) = qid(removeNumber(string(N))) .
+
+    op removeNumbers : Capability -> Capability .
+    eq removeNumbers(c) = c .
+    eq removeNumbers(in(N)) = in(removeNumber(N)) .
+    eq removeNumbers(out(N)) = out(removeNumber(N)) .
+    eq removeNumbers(open(N)) = open(removeNumber(N)) .
+
+    op removeNumbers : VTA -> VTA .
+    eq removeNumbers(zero) = zero .
+    eq removeNumbers(tick) = tick .
+    eq removeNumbers(Ca . P) = removeNumbers(Ca) . removeNumbers(P) .
+    eq removeNumbers(N[Sdl | P]) = removeNumber(N)[Sdl | removeNumbers(P)] .
+    ceq removeNumbers(P | Q) = removeNumbers(P) | removeNumbers(Q) if P =/= zero and Q =/= zero .
+
     op _contains_ : VTA VTA -> Bool .
-    ceq (Q | R) contains P = Q contains P or R contains P if Q =/= zero and R =/= zero .
-    eq P contains P = true .
-    eq Q contains P = false [owise] .
+    eq P contains Q = removeNumbers(P) contains1 removeNumbers(Q) .
+
+    op _contains1_ : VTA VTA -> Bool .
+    ceq (Q | R) contains1 P = Q contains1 P or R contains1 P if Q =/= zero and R =/= zero .
+    eq P contains1 P = true .
+    eq Q contains1 P = false [owise] .
+
+    --- op substitute : Map{Name, Name} Set{Servable} VTA -> VTA .
+    op substitute : Set{Servable} VTA -> VTA .
+    eq substitute(empty, P) = P .
+    eq substitute((N, Names), P) = substitute(Names, substitute1(N, P)) .
+
+    op substitute1 : Name Capability -> Capability .
+    ceq substitute1(N, in(M)) = in(N) if removeNumber(N) == M .
+    ceq substitute1(N, out(M)) = out(N) if removeNumber(N) == M .
+    ceq substitute1(N, open(M)) = open(N) if removeNumber(N) == M .
+    eq substitute1(N, Ca) = Ca [owise] .
+
+    op substitute1 : Name VTA -> VTA .
+    eq substitute1(N, zero) = zero .
+    eq substitute1(N, tick) = tick .
+    eq substitute1(N, Ca . P) = substitute1(N, Ca) . substitute1(N, P) .
+    eq substitute1(N, M[Sdl | P]) = if removeNumber(N) == M then N[Sdl | substitute1(N, P)] else M[Sdl | substitute1(N, P)] fi .
+    ceq substitute1(N, P | Q) = substitute1(N, P) | substitute1(N, Q) if P =/= zero and Q =/= zero .
+
+    var Names : Set{Servable} .
+    var PrivateNames : [Set{Servable}] .
+
+    op makePrivateName : Name -> Name .
+    eq makePrivateName(N) = qid(string(N) + string(counter, 10)) .
+
+    op makePrivateNames : Set{Servable} -> Set{Servable} .
+    eq makePrivateNames(empty) = empty .
+    eq makePrivateNames((N, Names)) = makePrivateName(N), makePrivateNames(Names) .
 
     op !_ : VTA -> VTA .
+    op !<_>_ : Set{Servable} VTA -> VTA .
     crl { ! P | Q } => { ! P | P | Q } if not(Q contains P) .
     crl N[Sdl | ! P | Q] => N[Sdl | ! P | P | Q] if not(Q contains P) .
+
+    crl { !< Names > P | Q } => { !< Names > P | substitute(PrivateNames, P) | Q }
+      if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
+    crl N[Sdl | !< Names > P | Q] => N[Sdl | !< Names > P | substitute(PrivateNames, P) | Q]
+      if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
 
     crl { P } => { P, G } if G, Gs := findGuards(P) .
     crl { P, G } => { removeGuard(P, G) }
@@ -442,8 +512,79 @@ endm
 mod AUTO-SCALING-EXAMPLE is
     pr RESOURCE-AWARE .
 
-    var X : Name .
+    vars K : Nat .
+    vars X Y : Name .
+
+    ops MIN MAX : -> Nat .
+    eq MIN = 2 .
+    eq MAX = 4 .
 
     op full : Name -> Formula .
-    eq full(X) = ~(<> 1 @ X ~ Consume) .
+    eq full(X) = (+)(+)(~(<> 1 @ X (X[~ Consume] | True))) .
+
+    op empty : Name -> Formula .
+    eq empty(X) = (+)(+)(X[~ Consume] | True) .
+
+    op exists : Name -> Formula .
+    eq exists(X) = (+)(+)(X[True] | True) .
+
+    op parallel : Name Name -> Formula .
+    eq parallel(X, Y) = (+)(+)(X[True] | Y[True] | True) .
+
+    op _has_ : Name Name -> Formula .
+    eq X has Y = (+)(+)(X[Y[True] | True]) .
+
+    op amount : Nat -> Formula .
+    eq amount(K) = <> 0 s(K) ('isRegistry[True] | True) .
+
+    op delete : Name -> VTA .
+    eq delete(X) =
+        out(X) . out('asg) . in('trash)
+        . ('restart_global[sdl | out('trash) . in('asg)
+            . ('global_lock[sdl | zero] | open('key) . zero)]
+          | 'restart_local[sdl | out('trash) . in('asg) . in(X)
+            . ('local_lock[sdl | in('decision) . zero]
+              | 'start[sdl | zero])]) .
+
+    op moveTo : Name -> VTA .
+    eq moveTo(X) =
+        'move[sdl | out('decision) . out(X) . in('request)
+          . in(X) . 'delete_sig[sdl | in('decision) . zero]] .
+
+    op cleanUp : -> VTA .
+    eq cleanUp =
+        ! 'cleaner[sdl | open('call_clean_up)
+          . open('deregistered) . out('asg)
+          . in('trash) . 'inTrash[sdl | zero]] .
+
+    op remove : Name -> VTA .
+    eq remove(X) =
+        'call_clean_up[sdl | out('decision) . out(X) . in('cleaner) . in(X)
+          . ('removal[sdl | out(X) . in('registry)
+              . open('counter) . 'deregistered[sdl | out('registry) . in(X) . zero]]
+            | open('inTrash) . 'restart_global[sdl | out(X) . out('trash) . in('asg)
+              . ('global_lock[sdl | zero] | open('key) . zero)])] .
+
+    op virtualMachine : Name -> VTA .
+    eq virtualMachine(X) =
+        X[sched 1 {0, 0, 0, empty, empty}
+          | 'start[sdl | zero] | 'local_lock[sdl | zero]
+          | ! (open('request) . zero)
+          | ! (open('restart_local) . zero) | 'isVM[sdl | zero] | open('cleaner) . zero
+          | ! (open('start) . 'key[sdl | out(X) . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
+          | ! (open('private_lock)
+            . 'decision[sdl | ((~ full(X) /\ parallel(X, 'request))
+                ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
+              | ((~ full(X) /\ ~ parallel(X, 'request) \/ full(X) \/
+                  (empty(X) /\ amount(MIN) \/ parallel(X, 'request)))
+                ? (open('local_lock) . delete(X)))
+              | ((empty(X) /\ ~ amount(MIN) /\ ~ parallel(X, 'request))
+                ? (open('local_lock) . remove(X) | 'local_lock[sdl | zero]))])] .
+
+    op scaling : -> VTA .
+    eq scaling =
+        !< 'vm > (open('scaling_lock)
+          . ((exists('request) /\ (all 'x . (full('x) \/ ~ 'x has 'isVM))) /\ amount(sd(MAX, 1)))
+          ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]]
+            | open('registered) . (virtualMachine('vm) | 'scaling_lock[sdl | zero]))) .
 endm
