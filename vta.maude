@@ -675,3 +675,71 @@ mod AUTO-SCALING-EXAMPLE is
     op example : -> VTA .
     eq example = { 'cloud[sdl(('asg, 'request, 'trash)) | asg | trash | request(1)] } .
 endm
+
+mod AUTO-SCALING-SMALL-EXAMPLE is
+    pr RESOURCE-AWARE .
+
+    vars K : Nat .
+    vars X Y : Name .
+
+    ops MIN MAX : -> Nat .
+    eq MIN = 2 .
+    eq MAX = 4 .
+
+    op full : Name -> Formula .
+    eq full(X) = (+)(+)(~(<> 1 @ X (X[~ Consume] | True))) .
+
+    op empty : Name -> Formula .
+    eq empty(X) = (+)(+)(X[~ Consume] | True) .
+
+    op exists : Name -> Formula .
+    eq exists(X) = (+)(+)(X[True] | True) .
+
+    op parallel : Name Name -> Formula .
+    eq parallel(X, Y) = (+)(+)(X[True] | Y[True] | True) .
+
+    op _has_ : Name Name -> Formula .
+    eq X has Y = (+)(+)(X[Y[True] | True]) .
+
+    op moveTo : Name -> VTA .
+    eq moveTo(X) = 'move[sdl | out(X) . in('request) . in(X) . zero] .
+
+    op virtualMachine : Name -> VTA .
+    eq virtualMachine(X) =
+        X[sched 1 {0, 0, 0, empty, ('isVM)}
+          | moveTo(X)
+          | ! (open('request) . zero)] .
+
+    op scaling : -> VTA .
+    eq scaling =
+        !< 'vm > (open('scaling_lock)
+          . ((exists('request) /\ (all 'x . (full('x) \/ ~ 'x has 'isVM))))
+          ? ((virtualMachine('vm) | 'scaling_lock[sdl | zero]))) .
+
+
+    op scaling2 : -> VTA .
+    eq scaling2 =
+        !< 'vm > (open('scaling_lock)
+          . ((exists('request) /\ ~ (+) (exists('isVM)))
+            ? ((virtualMachine('vm) | 'scaling_lock[sdl | zero])))) .
+
+    op consumes : Nat -> VTA .
+    eq consumes(0) = zero .
+    eq consumes(s K) = c . consumes(K) .
+
+    op request : Nat -> VTA .
+    eq request(K) = 'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
+
+    op trash : -> VTA .
+    eq trash = 'trash[sdl | zero ] .
+
+    op asg : -> VTA .
+    eq asg = 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock)}
+	  | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
+	  |  scaling2
+	  | 'scaling_lock[ sdl | zero]
+	  ] .
+
+    op smallexample : -> VTA .
+    eq smallexample = 'cloud[sdl(('asg, 'request, 'trash)) | asg | trash | request(1)] .
+endm
