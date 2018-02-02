@@ -367,9 +367,23 @@ mod VTA-SATISFACTION is
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
-    eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
 
-    eq P |= F = false [owise] .
+    crl [Parallel] : P | Q |= F | G => true
+      if P |= F => true /\ Q |= G => true .
+
+    crl [Sometime] : P |= <> A @ X F => true
+      if  contains(P, X) /\
+          P => Q /\
+          distance(P, Q, X) <= A /\
+          contains(Q, X) /\
+          Q |= F => true .
+
+    crl [Sometime-else] : P |= <> A @ X F => false
+      if P |= ~ (<> A @ X F) => true .
+
+    vars B1 B2 : Bool .
+    eq true xor B2 = true [owise] .
+    eq not(B2) = true [owise] .
 
     var Ps : Set{Servable} .
     vars R : Rat .
@@ -447,7 +461,7 @@ mod RESOURCE-AWARE is
     eq removeGuard(tick, G) = tick .
     eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
-    eq removeGuard(T ? P, G) = untag(F) ? P .
+    eq removeGuard(T ? P, G) = untag(T) ? P .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
@@ -578,9 +592,9 @@ mod RESOURCE-AWARE is
     crl { P } => { P, G } if G, Gs := findGuards(P) .
 
     crl { P, G } => { removeGuard(P, G) }
-      if removeGuardedProcess(P, G) |= G = true .
+      if removeGuardedProcess(P, G) |= G => true .
 
-    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
+      ---    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
 endm
 
 mod AUTO-SCALING-EXAMPLE is
