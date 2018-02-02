@@ -287,8 +287,17 @@ mod VTA-FORMULA is
     eq consumptions(open(N) . P) = consumptions(P) .
     ceq consumptions(P | Q) = consumptions(P) or consumptions(Q)
       if P =/= zero and Q =/= zero .
-    eq consumptions(N[Sc | P]) = consumptions(P) .
+    eq consumptions(N[Sc | P]) = consumptions(P) or consumptions(Sc) .
     eq consumptions(P) = false [owise] .
+
+    op consumptions : Scheduler -> Bool .
+    eq consumptions(sched Speed {InN, OutN, RestN, UnSrvN, SrvN}) =
+        consumptions1(union(UnSrvN, SrvN)) .
+
+    op consumptions1 : Set{Servable} -> Bool .
+    eq consumptions1(empty) = false .
+    eq consumptions1((P, NS)) = consumptions(P) or consumptions1(NS) .
+    eq consumptions1(P) = false [owise] .
 
     op accumulatespeed : Scheduler VTA -> VTA .
     eq accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK},
@@ -358,18 +367,9 @@ mod VTA-SATISFACTION is
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
+    eq [Parallel] : P | Q |= F | G = (P |= F) and (Q |= G) or (P |= G) and (Q |= F) .
 
-    crl [Parallel] : P | Q |= F | G => true
-      if P |= F => true /\ Q |= G => true .
-
-    crl [Sometime] : P |= <> A @ X F => true
-      if  contains(P, X) /\
-          P => Q /\
-          distance(P, Q, X) <= A /\
-          contains(Q, X) /\
-          Q |= F => true .
-
-    --- rl [Sometime-else] : P |= F => false .
+    eq P |= F = false [owise] .
 
     var Ps : Set{Servable} .
     vars R : Rat .
@@ -420,15 +420,15 @@ mod RESOURCE-AWARE is
     vars Speed : Rat .
     vars Served Unserved : Set{Servable} .
 
-
     op findGuards : VTA -> Set{Formula} .
-    eq findGuards(zero) = empty .
     eq findGuards(G ? P) = G .
     ceq findGuards(P | Q) = union(findGuards(P), findGuards(Q)) if P =/= zero /\ Q =/= zero .
     eq findGuards(N[Sdl | P]) = findGuards(P) .
+    eq findGuards(P) = empty [owise] .
 
     op removeGuard : VTA Formula -> VTA .
     eq removeGuard(zero, G) = zero .
+    eq removeGuard(tick, G) = tick .
     eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
@@ -541,7 +541,9 @@ mod RESOURCE-AWARE is
 
     op !_ : VTA -> VTA .
     op !<_>_ : Set{Servable} VTA -> VTA .
+
     crl { ! P | Q } => { ! P | P | Q } if not(Q contains P) .
+
     crl N[sched Speed {In, Out, Rest, Served, Unserved} | ! P | Q]
       =>
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | ! P | P | Q]
@@ -549,6 +551,7 @@ mod RESOURCE-AWARE is
 
     crl { !< Names > P | Q } => { !< Names > P | substitute(PrivateNames, P) | Q }
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
+
     crl N[sched Speed {In, Out, Rest, Served, Unserved}| !< Names > P | Q]
       =>
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))}
@@ -556,11 +559,11 @@ mod RESOURCE-AWARE is
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
 
     crl { P } => { P, G } if G, Gs := findGuards(P) .
-    crl { P, G } => { removeGuard(P, G) }
-      if removeGuardedProcess(P, G) |= G => true .
-    crl { P, G } => { P } if removeGuardedProcess(P, G) |= G => false .
 
-    rl [Sometime-else] : P |= F => false .
+    crl { P, G } => { removeGuard(P, G) }
+      if removeGuardedProcess(P, G) |= G = true .
+
+    crl { P, G } => { P } if removeGuardedProcess(P, G) |= G = false .
 endm
 
 mod AUTO-SCALING-EXAMPLE is
@@ -686,11 +689,12 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     eq MIN = 2 .
     eq MAX = 4 .
 
+    --- Remember to mirror the changes in the big example if this goes well.
     op full : Name -> Formula .
-    eq full(X) = (+)(+)(~(<> 1 @ X (X[~ Consume] | True))) .
+    eq full(X) = ~ empty(X) .
 
     op empty : Name -> Formula .
-    eq empty(X) = (+)(+)(X[~ Consume] | True) .
+    eq empty(X) = (+)(+)((X[True] /\ ~ Consume) | True) .
 
     op exists : Name -> Formula .
     eq exists(X) = (+)(+)(X[True] | True) .
