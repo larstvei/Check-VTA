@@ -378,8 +378,7 @@ mod VTA-SATISFACTION is
           contains(Q, X) /\
           Q |= F => true .
 
-    crl [Sometime-else] : P |= <> A @ X F => false
-      if P |= ~ (<> A @ X F) => true .
+    crl [False] : P |= F => false if P |= ~ F => true .
 
     vars B1 B2 : Bool .
     eq true xor B2 = true [owise] .
