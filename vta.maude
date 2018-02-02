@@ -402,13 +402,18 @@ mod RESOURCE-AWARE is
     pr CONVERSION .
     pr COUNTER .
 
+    sort Tried .
+    subsort Tried < Formula .
+
     op {_} : VTA -> VTA .
     op {_,_} : VTA Formula -> VTA [frozen] .
     op _?_ : Formula VTA -> VTA .
+    op tried : Formula -> Tried .
 
     vars P Q R : VTA .
     vars N M Y : Name .
     vars G F : Formula .
+    var T : Tried .
     var Gs : Set{Formula} .
     var Ca : Capability .
     var O : Rat .
@@ -421,16 +426,28 @@ mod RESOURCE-AWARE is
     vars Served Unserved : Set{Servable} .
 
     op findGuards : VTA -> Set{Formula} .
+    eq findGuards(T ? P) = empty .
     eq findGuards(G ? P) = G .
     ceq findGuards(P | Q) = union(findGuards(P), findGuards(Q)) if P =/= zero /\ Q =/= zero .
     eq findGuards(N[Sdl | P]) = findGuards(P) .
     eq findGuards(P) = empty [owise] .
+
+    op tag : VTA Formula -> VTA .
+    eq tag(G ? P, G) = tried(G) ? P .
+    ceq tag(G ? P, F) = G ? P if G =/= F .
+    ceq tag(P | Q, G) = tag(P, G) | tag(Q, G) if P =/= zero /\ Q =/= zero .
+    eq tag(N[Sdl | P], G) = N[Sdl | tag(P, G)] .
+    eq tag(P, G) = P [owise] .
+
+    op untag : Tried -> Formula .
+    eq untag(tried(F)) = F .
 
     op removeGuard : VTA Formula -> VTA .
     eq removeGuard(zero, G) = zero .
     eq removeGuard(tick, G) = tick .
     eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
+    eq removeGuard(T ? P, G) = untag(F) ? P .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
@@ -563,7 +580,7 @@ mod RESOURCE-AWARE is
     crl { P, G } => { removeGuard(P, G) }
       if removeGuardedProcess(P, G) |= G = true .
 
-    crl { P, G } => { P } if removeGuardedProcess(P, G) |= G = false .
+    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
 endm
 
 mod AUTO-SCALING-EXAMPLE is
@@ -747,3 +764,14 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     op smallexample : -> VTA .
     eq smallexample = 'cloud[sdl(('asg, 'request, 'trash)) | asg | trash | request(1)] .
 endm
+
+rew { 'cloud[sdl('asg) | 'asg[sched 1 {0, 0, 0, empty, 'vm}
+	  | 'vm[sched 1 {0, 0, 0, empty, empty} | full('vm) ? zero ]]] } .
+
+
+rew 'cloud[sdl('asg) | 'asg[sched 1 {0, 0, 0, empty, 'vm}
+	  | 'vm[sched 1 {0, 0, 0, empty, empty} |  zero ]]] |= full('vm)  .
+
+rew { 'cloud[sdl('asg) | 'asg[sched 1 {0, 0, 0, empty, 'vm} |  full('vm) ? zero  | tick | tick | 'vm[sched 1 {0, 0, 0, empty, empty} | c . c . zero ]]] }.
+
+rew 'cloud[sdl('asg) | 'asg[sched 1 {0, 0, 0, empty, 'vm}  | tick | tick | 'vm[sched 1 {0, 0, 0, empty, empty} | c . c . zero ]]] |= full('vm) . 
