@@ -378,11 +378,8 @@ mod VTA-SATISFACTION is
           contains(Q, X) /\
           Q |= F => true .
 
-    crl [False] : P |= F => false if P |= ~ F => true .
-
-    vars B1 B2 : Bool .
-    eq true xor B2 = true [owise] .
-    eq not(B2) = true [owise] .
+    var B : Bool .
+    crl [Blob-to-false] : B => false if B =/= true and B =/= false .
 
     var Ps : Set{Servable} .
     vars R : Rat .
