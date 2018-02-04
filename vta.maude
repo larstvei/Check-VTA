@@ -587,7 +587,7 @@ mod RESOURCE-AWARE is
 
     crl { P } => { P, Gs } if Gs := findGuards(P) .
 
-    crl { P, (G, Gs) } => { removeGuard(P, G) }
+    crl { P, (G, Gs) } => { removeGuard(P, G), Gs }
       if removeGuardedProcess(P, G) |= G => true .
 
       ---    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
