@@ -590,6 +590,8 @@ mod RESOURCE-AWARE is
     crl { P, (G, Gs) } => { removeGuard(P, G) }
       if removeGuardedProcess(P, G) |= G => true .
 
+    rl { P, empty } => { P } .
+
       ---    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
 endm
 
