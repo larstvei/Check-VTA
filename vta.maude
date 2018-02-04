@@ -412,18 +412,12 @@ mod RESOURCE-AWARE is
     pr CONVERSION .
     pr COUNTER .
 
-    sort Tried .
-    subsort Tried < Formula .
-
     op {_} : VTA -> VTA .
-    op {_,_} : VTA Set{Formula} -> VTA .
     op _?_ : Formula VTA -> VTA .
-    op tried : Formula -> Tried .
 
     vars P Q R : VTA .
     vars N M Y : Name .
     vars G F : Formula .
-    var T : Tried .
     var Gs : Set{Formula} .
     var Ca : Capability .
     var O : Rat .
@@ -436,28 +430,16 @@ mod RESOURCE-AWARE is
     vars Served Unserved : Set{Servable} .
 
     op findGuards : VTA -> Set{Formula} .
-    eq findGuards(T ? P) = empty .
     eq findGuards(G ? P) = G .
     ceq findGuards(P | Q) = union(findGuards(P), findGuards(Q)) if P =/= zero /\ Q =/= zero .
     eq findGuards(N[Sdl | P]) = findGuards(P) .
     eq findGuards(P) = empty [owise] .
-
-    op tag : VTA Formula -> VTA .
-    eq tag(G ? P, G) = tried(G) ? P .
-    ceq tag(G ? P, F) = G ? P if G =/= F .
-    ceq tag(P | Q, G) = tag(P, G) | tag(Q, G) if P =/= zero /\ Q =/= zero .
-    eq tag(N[Sdl | P], G) = N[Sdl | tag(P, G)] .
-    eq tag(P, G) = P [owise] .
-
-    op untag : Tried -> Formula .
-    eq untag(tried(F)) = F .
 
     op removeGuard : VTA Formula -> VTA .
     eq removeGuard(zero, G) = zero .
     eq removeGuard(tick, G) = tick .
     eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
-    eq removeGuard(T ? P, G) = untag(T) ? P .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
@@ -585,14 +567,9 @@ mod RESOURCE-AWARE is
           | !< Names > P | substitute(PrivateNames, P) | Q]
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
 
-    crl { P } => { P, Gs } if Gs := findGuards(P) .
-
-    crl { P, (G, Gs) } => { removeGuard(P, G) }
-      if removeGuardedProcess(P, G) |= G => true .
-
-    rl { P, empty } => { P } .
-
-      ---    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
+    crl { P } => { removeGuard(P, G) }
+      if  G, Gs := findGuards(P) /\
+          removeGuardedProcess(P, G) |= G => true .
 endm
 
 mod AUTO-SCALING-EXAMPLE is
