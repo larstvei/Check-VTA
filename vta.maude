@@ -416,7 +416,7 @@ mod RESOURCE-AWARE is
     subsort Tried < Formula .
 
     op {_} : VTA -> VTA .
-    op {_,_} : VTA Formula -> VTA [frozen] .
+    op {_,_} : VTA Set{Formula} -> VTA .
     op _?_ : Formula VTA -> VTA .
     op tried : Formula -> Tried .
 
@@ -585,9 +585,9 @@ mod RESOURCE-AWARE is
           | !< Names > P | substitute(PrivateNames, P) | Q]
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
 
-    crl { P } => { P, G } if G, Gs := findGuards(P) .
+    crl { P } => { P, Gs } if Gs := findGuards(P) .
 
-    crl { P, G } => { removeGuard(P, G) }
+    crl { P, (G, Gs) } => { removeGuard(P, G) }
       if removeGuardedProcess(P, G) |= G => true .
 
       ---    crl { P, G } => { tag(P, G) } if removeGuardedProcess(P, G) |= G = false .
