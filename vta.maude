@@ -265,6 +265,7 @@ mod VTA-FORMULA is
     eq (alltop Y . F)[X <- N] = alltop Y . F[X <- N] .
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
+    eq ((+) F)[X <- N] = (+) (F[X <- N]) .
     eq F[N <- X] = F [owise] .
 
     var Sc : Scheduler .
@@ -499,6 +500,7 @@ mod RESOURCE-AWARE is
     eq removeNumbers(!< Names > P) = !< Names > removeNumbers(P) .
 
     op removeNumbers : Formula -> Formula .
+    eq removeNumbers(True) = True .
     eq removeNumbers(~ F) = ~ removeNumbers(F) .
     eq removeNumbers(M[F]) = removeNumber(M)[removeNumbers(F)] .
     eq removeNumbers(<> I @ M F) = <> I @ removeNumber(M) removeNumbers(F) .
@@ -509,6 +511,7 @@ mod RESOURCE-AWARE is
     eq removeNumbers(alltop Y . F) = alltop Y . removeNumbers(F) .
     eq removeNumbers(exists Y . F) = exists Y . removeNumbers(F) .
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
+    eq removeNumbers((+) F) = (+) removeNumbers(F) .
 
     op _contains_ : VTA VTA -> Bool .
     eq P contains Q = removeNumbers(P) contains1 removeNumbers(Q) .
@@ -539,6 +542,7 @@ mod RESOURCE-AWARE is
     eq substitute1(N, (alltop Y . F)) = alltop Y . substitute1(N, F) .
     eq substitute1(N, (exists Y . F)) = exists Y . substitute1(N, F) .
     eq substitute1(N, (<> O I F)) = <> O I substitute1(N, F) .
+    eq substitute1(N, ((+) F)) = (+) substitute1(N, F) .
 
     op substitute1 : Name VTA -> VTA .
     eq substitute1(N, zero) = zero .
