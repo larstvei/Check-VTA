@@ -231,6 +231,7 @@ mod VTA-FORMULA is
 
     ops True False : -> Formula [ctor format (g o)] .
     op Consume : -> Formula [ctor] .
+    op NotConsume : -> Formula [ctor] .
     op ~_ : Formula -> Formula [ctor prec 53 format (r o d)] .
     op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (d r o d)] .
     op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (d r o d)] .
@@ -238,6 +239,7 @@ mod VTA-FORMULA is
     op _[_] : Name Formula -> Formula [prec 10] .
     op _|_ : Formula Formula -> Formula [comm assoc] .
     op all_._ : Name Formula -> Formula .
+    op alltop_._ : Name Formula -> Formula .
     op exists_._ : Name Formula -> Formula .
     op (+)_ : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
@@ -260,6 +262,7 @@ mod VTA-FORMULA is
     eq (F \/ G)[X <- N] = F[X <- N] \/ G[X <- N] .
     eq (F | G)[X <- N] = F[X <- N] | G[X <- N] .
     eq (all Y . F)[X <- N] = all Y . F[X <- N] .
+    eq (alltop Y . F)[X <- N] = alltop Y . F[X <- N] .
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     eq F[N <- X] = F [owise] .
@@ -275,6 +278,16 @@ mod VTA-FORMULA is
     op allsubs' : Name Set{Servable} Formula -> Formula .
     eq allsubs'(X, empty, F) = True .
     eq allsubs'(X, (N, NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
+
+    op alltopsubs : Name VTA Formula -> Formula .
+    eq alltopsubs(X, P, F) = allsubs'(X, barb(P), F) .
+
+    op allsubsExist : Name VTA Formula -> Formula .
+    eq allsubsExist(X, P, F) = allsubsExist'(X, names(P), F) .
+
+    op allsubsExist' : Name Set{Servable} Formula -> Formula .
+    eq allsubsExist'(X, empty, F) = False .
+    eq allsubsExist'(X, (N, NS), F) =  F[X <- N] \/ allsubsExist'(X, NS, F) .
 
     vars InN OutN RestN InM OutM RestM InK OutK RestK : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
@@ -360,8 +373,10 @@ mod VTA-SATISFACTION is
     eq [Void] : zero |= void = true .
     eq [Ambient] : N[Sc | P] |= X[F] = if N == X then P |= F else false fi .
     eq [Forall] : P |= all X . F = P |= allsubs(X, P, F) .
-    eq [Exists] : P |= exists X . F = P |= ~ (all X . (~ F)) .
+    eq [ForallTop] : P |= alltop X . F = P |= alltopsubs(X, P, F) .
+    eq [Exists] : P |= exists X . F = P |= allsubsExist(X, P, F) .
     eq [Consumption] : P |= Consume = consumptions(P) .
+    eq [NotConsumption] : P |= NotConsume = not(consumptions(P)) .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
       if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
@@ -491,6 +506,7 @@ mod RESOURCE-AWARE is
     eq removeNumbers(F \/ G) = removeNumbers(F) \/ removeNumbers(G) .
     eq removeNumbers(F | G) = removeNumbers(F) | removeNumbers(G) .
     eq removeNumbers(all Y . F) = all Y . removeNumbers(F) .
+    eq removeNumbers(alltop Y . F) = alltop Y . removeNumbers(F) .
     eq removeNumbers(exists Y . F) = exists Y . removeNumbers(F) .
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
 
@@ -520,6 +536,7 @@ mod RESOURCE-AWARE is
     eq substitute1(N, (F \/ G)) = substitute1(N, F) \/ substitute1(N, G) .
     eq substitute1(N, (F | G)) = substitute1(N, F) | substitute1(N, G) .
     eq substitute1(N, (all Y . F)) = all Y . substitute1(N, F) .
+    eq substitute1(N, (alltop Y . F)) = alltop Y . substitute1(N, F) .
     eq substitute1(N, (exists Y . F)) = exists Y . substitute1(N, F) .
     eq substitute1(N, (<> O I F)) = <> O I substitute1(N, F) .
 
