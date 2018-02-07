@@ -554,6 +554,10 @@ mod RESOURCE-AWARE is
     eq consumptions(! P) = consumptions(P) .
     eq consumptions(!< Names > P) = consumptions(P) .
 
+    --- Additional cases for names
+    eq names(! P) =  names(P) .
+    eq names(!< Names > P) =  names(P) .
+
     var Names : Set{Servable} .
     var PrivateNames : [Set{Servable}] .
 
