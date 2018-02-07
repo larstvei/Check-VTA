@@ -452,24 +452,19 @@ mod RESOURCE-AWARE is
     eq findGuards(P) = empty [owise] .
 
     op removeGuard : VTA Formula -> VTA .
-    eq removeGuard(zero, G) = zero .
-    eq removeGuard(tick, G) = tick .
     eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
         N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
+    eq removeGuard(P, G) =  P [owise] .
 
     op removeGuardedProcess : VTA Formula -> VTA .
-    eq removeGuardedProcess(zero, G) = zero .
-    eq removeGuardedProcess(tick, G) = tick .
     eq removeGuardedProcess(G ? P, G) = zero .
     ceq removeGuardedProcess(F ? P, G) = F ? P if F =/= G .
-    eq removeGuardedProcess(Ca . P, G) = Ca . removeGuardedProcess(P, G) .
     ceq removeGuardedProcess(P | Q, G) = removeGuardedProcess(P, G) | removeGuardedProcess(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuardedProcess(N[Sdl | P], G) = N[Sdl | removeGuardedProcess(P, G)] .
-    eq removeGuardedProcess(! P, G) = ! removeGuardedProcess(P, G) .
-    eq removeGuardedProcess(!< Names > P, G) = !< Names > removeGuardedProcess(P, G) .
+    eq removeGuardedProcess(P, G) = P [owise] .
 
     op removeNumber : String -> String .
     eq removeNumber(S) = removeNumber1(0, S) .
