@@ -427,7 +427,7 @@ mod RESOURCE-AWARE is
     pr COUNTER .
 
     op {_} : VTA -> VTA .
-    op _?_ : Formula VTA -> VTA .
+    op _?_ : Formula VTA -> VTA [frozen (2)] .
 
     vars P Q R : VTA .
     vars N M Y : Name .
