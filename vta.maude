@@ -245,6 +245,8 @@ mod VTA-FORMULA is
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
     op <>___ : Rat Nat Formula -> Formula [prec 53] .
     op _@_ : Formula Name -> Formula .
+    op _~/=~_ : Name Name -> Formula .
+    op _~=~_ : Name Name -> Formula .
 
     vars N M X Y : Name .
     vars F G : Formula .
@@ -266,6 +268,8 @@ mod VTA-FORMULA is
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     eq ((+) F)[X <- N] = (+) (F[X <- N]) .
+    eq (Y ~=~ M)[X <- N] = if Y == X then N else Y fi ~=~ if M == X then N else M fi .
+    eq (Y ~/=~ M)[X <- N] = if Y == X then N else Y fi ~/=~ if M == X then N else M fi .
     eq F[N <- X] = F [owise] .
 
     var Sc : Scheduler .
@@ -360,7 +364,7 @@ mod VTA-SATISFACTION is
 
     vars F G : Formula .
     vars P Q : VTA .
-    vars N X : Name .
+    vars N X Y : Name .
     var Sc : Scheduler .
     var S : Nat .
 
@@ -394,6 +398,8 @@ mod VTA-SATISFACTION is
           contains(Q, X) /\
           Q |= F => true .
 
+    eq [NamesIdentical] : P |= X ~=~ Y  = X == Y .
+    eq [NamesDifferent] : P |= X ~/=~ Y = X =/= Y .
 
     var Ps : Set{Servable} .
     vars R : Rat .
@@ -430,7 +436,7 @@ mod RESOURCE-AWARE is
     op _?_ : Formula VTA -> VTA [frozen (2)] .
 
     vars P Q R : VTA .
-    vars N M Y : Name .
+    vars N M Y X : Name .
     vars G F : Formula .
     var Gs : Set{Formula} .
     var Ca : Capability .
@@ -505,6 +511,8 @@ mod RESOURCE-AWARE is
     eq removeNumbers(exists Y . F) = exists Y . removeNumbers(F) .
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
+    eq removeNumbers(X ~/=~ Y) = (removeNumber(X) ~/=~ removeNumber(Y))  .
+    eq removeNumbers(X ~=~ Y) = (removeNumber(X) ~=~ removeNumber(Y))  .
 
     op _contains_ : VTA VTA -> Bool .
     eq P contains Q = removeNumbers(P) contains1 removeNumbers(Q) .
@@ -536,6 +544,8 @@ mod RESOURCE-AWARE is
     eq substitute1(N, (exists Y . F)) = exists Y . substitute1(N, F) .
     eq substitute1(N, (<> O I F)) = <> O I substitute1(N, F) .
     eq substitute1(N, ((+) F)) = (+) substitute1(N, F) .
+    eq substitute1(N, X ~/=~ Y) = if (removeNumber(N) == X) then N else X fi ~/=~ if (removeNumber(N) == Y) then N else Y fi  .
+    eq substitute1(N, X ~=~ Y) = if (removeNumber(N) == X) then N else X fi ~=~ if (removeNumber(N) == Y) then N else Y fi  .
 
     op substitute1 : Name VTA -> VTA .
     eq substitute1(N, zero) = zero .
