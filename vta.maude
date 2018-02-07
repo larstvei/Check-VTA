@@ -49,7 +49,7 @@ fmod VTA-OPS is
 
     op zero : -> VTA [ctor] .
     op _|_ : VTA VTA -> VTA [id: zero assoc comm prec 90] .
-    op _._ : Capability VTA -> VTA [prec 80] .
+    op _._ : Capability VTA -> VTA [prec 80 frozen (2)] .
     op _[_|_] : Name Scheduler VTA -> VTA [prec 70 format (ni+ d d d d d -)] .
 
     var Unserved : Set{Servable} .
