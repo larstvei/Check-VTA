@@ -546,10 +546,15 @@ mod RESOURCE-AWARE is
     eq substitute1(N, Ca) = Ca [owise] .
 
     op substitute1 : Name Formula -> Formula .
+    eq substitute1(N, True) = True .
+    eq substitute1(N, False) = False .
+    eq substitute1(N, Consume) = Consume .
+    eq substitute1(N, NotConsume) = NotConsume .
     eq substitute1(N, (~ F)) = ~ (substitute1(N, F)) .
     eq substitute1(N, M[F]) = (if (removeNumber(N) == M) then N else M fi)[substitute1(N, F)] .
     eq substitute1(N, (<> I @ M F)) = <> I @ (if (removeNumber(N) == M) then N else M fi) substitute1(N, F) .
     eq substitute1(N, (F @ M)) = substitute1(N, F) @ (if (removeNumber(N) == M) then N else M fi) .
+    eq substitute1(N, (F /\ G)) = substitute1(N, F) /\ substitute1(N, G) .
     eq substitute1(N, (F \/ G)) = substitute1(N, F) \/ substitute1(N, G) .
     eq substitute1(N, (F | G)) = substitute1(N, F) | substitute1(N, G) .
     eq substitute1(N, (all Y . F)) = all Y . substitute1(N, F) .
@@ -568,7 +573,7 @@ mod RESOURCE-AWARE is
     eq substitute1(N, tick) = tick .
     eq substitute1(N, Ca . P) = substitute1(N, Ca) . substitute1(N, P) .
     eq substitute1(N, M[Sdl | P]) = if removeNumber(N) == M then N[Sdl | substitute1(N, P)] else M[Sdl | substitute1(N, P)] fi .
-    eq substitute1(N, G ? P) = G ? substitute1(N, P) .
+    eq substitute1(N, G ? P) = substitute1(N, G) ? substitute1(N, P) .
     eq substitute1(N, ! P) = ! substitute1(N, P) .
     eq substitute1(N, !< Names > P) = !< Names > substitute1(N, P) .
     ceq substitute1(N, P | Q) = substitute1(N, P) | substitute1(N, Q) if P =/= zero and Q =/= zero .
