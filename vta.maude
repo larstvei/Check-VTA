@@ -48,9 +48,9 @@ fmod VTA-OPS is
     op sched_{_,_,_,_,_} : Rat Nat Nat Nat Set{Servable} Set{Servable} -> Scheduler .
 
     op zero : -> VTA [ctor] .
-    op _|_ : VTA VTA -> VTA [id: zero assoc comm prec 90] .
+    op _|_ : VTA VTA -> VTA [id: zero assoc comm prec 90 format (d ni d d)] .
     op _._ : Capability VTA -> VTA [prec 80 frozen (2)] .
-    op _[_|_] : Name Scheduler VTA -> VTA [prec 70 format (ni+ d d d d d -)] .
+    op _[_|_] : Name Scheduler VTA -> VTA [prec 70 format (g++ o d ni d d --)] .
 
     var Unserved : Set{Servable} .
     vars P Q : VTA .
@@ -234,26 +234,26 @@ mod VTA-FORMULA is
     sort Formula .
     sort Var .
 
-    ops True False : -> Formula [ctor format (g o)] .
-    op Consume : -> Formula [ctor] .
-    op NotConsume : -> Formula [ctor] .
-    op ~_ : Formula -> Formula [ctor prec 53 format (r o d)] .
-    op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (d r o d)] .
-    op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (d r o d)] .
+    ops True False : -> Formula [ctor format (r o)] .
+    op Consume : -> Formula [ctor format (r o)] .
+    op NotConsume : -> Formula [ctor format (r o)] .
+    op ~_ : Formula -> Formula [ctor prec 53 format (r d o)] .
+    op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (r d d o)] .
+    op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (r d d o)] .
     op void : -> Formula [ctor format (r o)] .
-    op _[_] : Name Formula -> Formula [prec 10] .
-    op _|_ : Formula Formula -> Formula [comm assoc] .
-    op all_._ : Name Formula -> Formula .
-    op alltop_._ : Name Formula -> Formula .
-    op exists_._ : Name Formula -> Formula .
-    op (+)_ : Formula -> Formula .
-    op <>_@__ : Nat Name Formula -> Formula [prec 53] .
-    op <>___ : Rat Nat Formula -> Formula [prec 53] .
-    op #<_ : Nat -> Formula [prec 53] .
-    op #>_ : Nat -> Formula [prec 53] .
-    op _@_ : Formula Name -> Formula .
-    op _~/=~_ : Name Name -> Formula .
-    op _~=~_ : Name Name -> Formula .
+    op _[_] : Name Formula -> Formula [prec 10 format (r d d d o)] .
+    op _|_ : Formula Formula -> Formula [comm assoc format (r d d o)] .
+    op all_._ : Name Formula -> Formula [format (r d d d o)] .
+    op alltop_._ : Name Formula -> Formula [format (r d d d o)] .
+    op exists_._ : Name Formula -> Formula [format (r d d d o)] .
+    op (+)_ : Formula -> Formula [format (r d d d o)] .
+    op <>_@__ : Nat Name Formula -> Formula [prec 53 format (r d d d d o)] .
+    op <>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
+    op #<_ : Nat -> Formula [prec 53 format (r d o)] .
+    op #>_ : Nat -> Formula [prec 53 format (r d o)] .
+    op _@_ : Formula Name -> Formula [format (r d d o)] .
+    op _~/=~_ : Name Name -> Formula [format (r d d o)] .
+    op _~=~_ : Name Name -> Formula [format (r d d o)] .
 
     vars N M X Y : Name .
     vars F G : Formula .
@@ -444,7 +444,7 @@ mod RESOURCE-AWARE is
     pr COUNTER .
 
     op {_} : VTA -> VTA .
-    op _?_ : Formula VTA -> VTA [frozen (2)] .
+    op _?_ : Formula VTA -> VTA [frozen (2) format (d ni d d)] .
 
     vars P Q R : VTA .
     vars N M Y X : Name .
