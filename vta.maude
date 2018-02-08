@@ -249,6 +249,8 @@ mod VTA-FORMULA is
     op (+)_ : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53] .
     op <>___ : Rat Nat Formula -> Formula [prec 53] .
+    op #<_ : Nat -> Formula [prec 53] .
+    op #>_ : Nat -> Formula [prec 53] .
     op _@_ : Formula Name -> Formula .
     op _~/=~_ : Name Name -> Formula .
     op _~=~_ : Name Name -> Formula .
@@ -387,6 +389,10 @@ mod VTA-SATISFACTION is
     eq [Exists] : P |= exists X . F = P |= allsubsExist(X, P, F) .
     eq [Consumption] : P |= Consume = consumptions(P) .
     eq [NotConsumption] : P |= NotConsume = not(consumptions(P)) .
+    eq [LessSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
+        |= #< S  = | SrvN, UnSrvN | <= S .
+    eq [MoreSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
+        |= #> S  = | SrvN, UnSrvN | > S .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
       if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
@@ -518,6 +524,8 @@ mod RESOURCE-AWARE is
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
     eq removeNumbers(X ~/=~ Y) = (removeNumber(X) ~/=~ removeNumber(Y))  .
     eq removeNumbers(X ~=~ Y) = (removeNumber(X) ~=~ removeNumber(Y))  .
+    eq removeNumbers(#< I) = #< I .
+    eq removeNumbers(#> I) = #> I .
 
     op _contains_ : VTA VTA -> Bool .
     eq P contains Q = removeNumbers(P) contains1 removeNumbers(Q) .
@@ -551,6 +559,9 @@ mod RESOURCE-AWARE is
     eq substitute1(N, ((+) F)) = (+) substitute1(N, F) .
     eq substitute1(N, X ~/=~ Y) = if (removeNumber(N) == X) then N else X fi ~/=~ if (removeNumber(N) == Y) then N else Y fi  .
     eq substitute1(N, X ~=~ Y) = if (removeNumber(N) == X) then N else X fi ~=~ if (removeNumber(N) == Y) then N else Y fi  .
+    eq substitute1(N, #< I) = #< I .
+    eq substitute1(N, #> I) = #> I .
+
 
     op substitute1 : Name VTA -> VTA .
     eq substitute1(N, zero) = zero .
