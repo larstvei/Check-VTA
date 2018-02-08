@@ -632,13 +632,13 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     eq MAX = 4 .
 
     --- Remember to mirror the changes in the big example if this goes well.
-    op full : Name -> Formula .
+    op full_ : Name -> Formula .
     eq full(X) = (+)'asg[ (X[True] /\ Consume) | True] .
 
-    op empty : Name -> Formula .
+    op empty_ : Name -> Formula .
     eq empty(X) = (+)'asg[ (X[True] /\ NotConsume) | True] .
 
-    op nameExists : Name -> Formula .
+    op nameExists_ : Name -> Formula .
     eq nameExists(Y) = exists 'x . ('x ~=~ Y)  .
 
     op nameExistsNot_ : Name -> Formula .
@@ -647,12 +647,14 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     op notVMorFull : Name -> Formula .
     eq notVMorFull(X) = (X[nameExistsNot('isVM) \/ Consume ] | True) .
 
-    op amount : Nat -> Formula .
-    eq amount(K) = ((<> 0 s(K) ( 'isRegistry[True] | True )) | True) .
+    op moveGuard_ : Name -> Formula .
+    eq moveGuard(X) = (((+)'asg[ nameExists('request) /\ ( (X[True] /\ NotConsume) | True  )]) | True) .
 
-    op _has_ : Name Name -> Formula .
-    eq X has Y = (+)(+)(X[Y[True] | True]| True) .
+    op restartGuard_ : Name -> Formula .
+    eq restartGuard(X) = (((+)'asg[ (nameExists('request) /\ ((X[True] /\ NotConsume) | ('registry[True] /\ (#< MIN)) | True)) \/  ( (X[True] /\ Consume) | True  )]) | True) .
 
+    op deleteGuard_ : Name -> Formula .
+    eq deleteGuard(X) =  (((+)'asg[ (nameExistsNot('request) /\ ((X[True] /\ NotConsume) | ('registry[True] /\ (#> MIN)) | True))]) | True) .
 
 op virtualMachine0 : Name -> VTA .
 eq virtualMachine0(X) =
@@ -679,11 +681,14 @@ eq virtualMachine1(X) =  X[sched 1 {0, 0, 0, empty, ('start,'isVM, 'scaling_lock
                                   | ! (open('start) . 'key[sdl | out(X) . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
                                   | ! (open('private_lock)
                                     . 'decision[sdl('local_lock) |
-                                       ((empty(X) /\ nameExists('request))
+                                       (moveGuard(X)
                                         ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
-                                      | (full(X) ? (open('local_lock) . delete(X)))
-                                      | ((empty(X) /\ nameExistsNot('request) ) ? (open('local_lock) . remove(X)))
+                                       | (restartGuard(X)
+                                        ? (open('local_lock) . delete(X)))
+                                    | (deleteGuard(X)
+                                        ? (open('local_lock) . remove(X)))
                                       | 'local_lock[sdl | zero]])] .
+
 
 op delete : Name -> VTA .
 eq delete(X) =
@@ -715,33 +720,39 @@ eq remove(X) =
 
 
 
---- time to try this
+--- 2. adding the bigger VM . (evaulating the guards takes ca 30sec and I need better formatting to see anything)
 op scaling1 : -> VTA .
 eq scaling1 =  !< 'vm > (open('scaling_lock) .
             (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) ))] | True ))
             ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine1('vm))))) .
 
 
+--- 3. combining bigger VM and #of vms. (not tried yet, because I don't even see what happens in 2.)
+op scaling2 : -> VTA .
+eq scaling2 =  !< 'vm > (open('scaling_lock) .
+                      (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) )) /\ (('registry[True] /\ (#< sd(MAX,1))) | True  )] | True ))
+            ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine1('vm))))) .
 
---- this works now, but it takes a few seconds (timed reduction not correct yet)
-op scaling : -> VTA .
-eq scaling =  !< 'vm > (open('scaling_lock) .
+--- 4. Tata. If everything reduces properly then the example is done.
+
+--- 0. Basics. this works
+op scaling0 : -> VTA .
+eq scaling0 =  !< 'vm > (open('scaling_lock) .
             (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) ))] | True ))
             ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
 
 
+--- 1. adding #of vms . this does work (but evaluating the guard still takes some seconds).
+op scaling : -> VTA .
+eq scaling =  !< 'vm > (open('scaling_lock) .
+            (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) )) /\ (('registry[True] /\ (#< MAX)) | True  )] | True ))
+              ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
 
 
---- this doesnt work (exists guards and the amount guard together break guard satisfaction? or does it just get very very big???).
-op scaling6 : -> VTA .
-eq scaling6 =  !< 'vm >
-            ((((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) ))] | True )) /\ amount(sd(MAX,1)) )
-              ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm)))) .
 
 op registry : -> VTA .
 eq registry =
-      'registry[sdl('isRegistry)
-      | 'isRegistry[sdl | zero]
+      'registry[sdl
       | ! (open('removal) . zero)] .
 
     op consumes : Nat -> VTA .
@@ -772,7 +783,7 @@ eq registry =
 endm
 
 --- should create one ‘vm and then stop doing things
-rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry)} | tick | tick | 'scaling_lock[sdl | zero] | registry ] | request(1)] }.
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling6 | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
 
---- should create one ‘vm and then stop doing things
-rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
+--- rew { smallexample } .
+
