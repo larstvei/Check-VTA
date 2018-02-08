@@ -196,10 +196,13 @@ mod VTA-CALCULUS is
       if  (c . P) := getConsume(UnSrvK) /\
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
-    rl [primary-tock-ambient] :
-        K[sched SpdK {InK, s(OutK), RestK, (UnSrvK, N), SrvK} | N[Sc | Q] | R]
+    crl [primary-tock-ambient] :
+        K[sched SpdK {InK, s(OutK), RestK, (UnSrvK, N), SrvK}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R] .
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R]
+        if SpdN > 0 .
 
     crl [secondary-tock-consume1] :
         K[sched SpdK {InK, OutK, s(RestK), UnSrvK, SrvK} | R]
@@ -210,10 +213,12 @@ mod VTA-CALCULUS is
           UnSrvN := (barb(P), UnSrvK \ (c . P)) .
 
     crl [secondary-tock-ambient1] :
-        K[sched SpdK {InK, OutK, s(RestK), (UnSrvK, N), SrvK} | N[Sc | Q] | R]
+        K[sched SpdK {InK, OutK, s(RestK), (UnSrvK, N), SrvK}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)} | N[Sc | tick | Q] | R]
-      if InK rem getFraction(s(RestK), SpdK) == 0 .
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R]
+      if InK rem getFraction(s(RestK), SpdK) == 0 /\ SpdN > 0 .
 
     crl [secondary-tock-no-action] :
         K[sched SpdK {InK, OutK, s(RestK), UnSrvK, SrvK} | P]
