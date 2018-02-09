@@ -511,6 +511,9 @@ mod RESOURCE-AWARE is
 
     op removeNumbers : Formula -> Formula .
     eq removeNumbers(True) = True .
+    eq removeNumbers(False) = False .
+    eq removeNumbers(Consume) = Consume .
+    eq removeNumbers(NotConsume) = NotConsume .
     eq removeNumbers(~ F) = ~ removeNumbers(F) .
     eq removeNumbers(M[F]) = removeNumber(M)[removeNumbers(F)] .
     eq removeNumbers(<> I @ M F) = <> I @ removeNumber(M) removeNumbers(F) .
