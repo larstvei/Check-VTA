@@ -67,7 +67,7 @@ fmod VTA-OPS is
     op names : VTA -> Set{Servable} .
     eq names(zero) = empty .
     eq names(tick) = empty .
-    eq names(Ca . P) = names(Ca), names(P) .
+    eq names(Ca . P) = names(Ca) .
     eq names(N[Sc | P]) = N, names(P) .
     ceq names(P | Q) = names(P), names(Q) if P =/= zero and Q =/= zero .
 
@@ -183,11 +183,26 @@ mod VTA-CALCULUS is
         K[sched SpdK {s(InK), OutN, RestN, UnSrvK, SrvK} | R]
       if  OutN RestN := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
 
-    crl [new-round] :
+    crl [new-round-consumption] :
         K[sched SpdK {InK, OutK, RestK, empty, SrvK} | R]
       =>
         K[sched SpdK {InK, OutK, RestK, SrvK, empty} | R]
-      if | SrvK | > 0 .
+      if | SrvK | > 0  /\ (c . P) := getConsume(SrvK) .
+
+    crl [new-round-ambient] :
+        K[sched SpdK {InK, OutK, RestK, empty, (SrvK, N)}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
+      =>
+        K[sched SpdK {InK, OutK, RestK, (SrvK, N), empty}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
+      if | SrvK | > 0  /\ SpdN > 0 .
+
+    rl [zero-speed-ambients] :
+        K[sched SpdK {InK, OutK, RestK, (UnSrvK, N), SrvK}
+          | N[sched 0 {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
+      =>
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+          | N[sched 0 {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R] .
 
     crl [primary-tock-consume] :
         K[sched SpdK {InK, s(OutK), RestK, UnSrvK, SrvK} | R]
@@ -247,6 +262,8 @@ mod VTA-FORMULA is
     op alltop_._ : Name Formula -> Formula [format (r d d d o)] .
     op exists_._ : Name Formula -> Formula [format (r d d d o)] .
     op (+)_ : Formula -> Formula [format (r d d d o)] .
+    op anyone : Formula -> Formula .
+    op none : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53 format (r d d d d o)] .
     op <>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
     op #<_ : Nat -> Formula [prec 53 format (r d o)] .
@@ -274,6 +291,8 @@ mod VTA-FORMULA is
     eq (alltop Y . F)[X <- N] = alltop Y . F[X <- N] .
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
+    eq (anyone(F))[X <- N] = anyone(F[X <- N]) .
+    eq (none(F))[X <- N] = none(F[X <- N]) .
     eq ((+) F)[X <- N] = (+) (F[X <- N]) .
     eq (Y ~=~ M)[X <- N] = if Y == X then N else Y fi ~=~ if M == X then N else M fi .
     eq (Y ~/=~ M)[X <- N] = if Y == X then N else Y fi ~/=~ if M == X then N else M fi .
@@ -283,6 +302,7 @@ mod VTA-FORMULA is
     var Ca : Capability .
     vars P Q : VTA .
     vars NS MS : Set{Servable} .
+    var Ser : Servable .
 
     op allsubs : Name VTA Formula -> Formula .
     eq allsubs(X, P, F) = allsubs'(X, names(P), F) .
@@ -315,14 +335,16 @@ mod VTA-FORMULA is
     eq consumptions(N[Sc | P]) = consumptions(P) or consumptions(Sc) .
     eq consumptions(P) = false [owise] .
 
+    op consumptions : Name -> Bool .
+    eq consumptions(N) = false .
+
     op consumptions : Scheduler -> Bool .
     eq consumptions(sched Speed {InN, OutN, RestN, UnSrvN, SrvN}) =
         consumptions1(union(UnSrvN, SrvN)) .
 
     op consumptions1 : Set{Servable} -> Bool .
     eq consumptions1(empty) = false .
-    eq consumptions1((P, NS)) = consumptions(P) or consumptions1(NS) .
-    eq consumptions1(P) = false [owise] .
+    eq consumptions1((Ser, NS)) = consumptions(Ser) or consumptions1(NS) .
 
     op accumulatespeed : Scheduler VTA -> VTA .
     eq accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK},
@@ -395,6 +417,10 @@ mod VTA-SATISFACTION is
         |= #> S  = | SrvN, UnSrvN | > S .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
       if  Ps := siblings(P) .
+    ceq [AnyOne] : P |= anyone(F) = anysat(Ps, F)
+        if  Ps := siblings(P) .
+    ceq [NoOne] : P |= none(F) = not(anysat(Ps, F))
+            if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
@@ -428,9 +454,13 @@ mod VTA-SATISFACTION is
     eq somewhere(Ps, R, A, F) = false [owise] .
 
     op spatialnext : Set{Servable} Formula -> Bool .
-    eq spatialnext((N[Sc | P], Ps), F) =
-        (P |= F) or spatialnext(Ps, F) .
+    eq spatialnext((N[Sc | P], Ps), F) = (P |= F) or spatialnext(Ps, F) .
     eq spatialnext(Ps, F) = false [owise] .
+
+    op anysat : Set{Servable} Formula -> Bool .
+    eq anysat((P , Ps), F) = (P |= F) or anysat(Ps, F) .
+    eq anysat(empty, F) = false [owise] .
+
 endm
 
 view Formula from TRIV to VTA-FORMULA is
@@ -519,12 +549,15 @@ mod RESOURCE-AWARE is
     eq removeNumbers(<> I @ M F) = <> I @ removeNumber(M) removeNumbers(F) .
     eq removeNumbers(F @ M) = removeNumbers(F) @ removeNumber(M) .
     eq removeNumbers(F \/ G) = removeNumbers(F) \/ removeNumbers(G) .
+    eq removeNumbers(F /\ G) = removeNumbers(F) /\  removeNumbers(G) .
     eq removeNumbers(F | G) = removeNumbers(F) | removeNumbers(G) .
     eq removeNumbers(all Y . F) = all Y . removeNumbers(F) .
     eq removeNumbers(alltop Y . F) = alltop Y . removeNumbers(F) .
     eq removeNumbers(exists Y . F) = exists Y . removeNumbers(F) .
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
+    eq removeNumbers(anyone(F)) = anyone(removeNumbers(F)) .
+    eq removeNumbers(none(F)) = none(removeNumbers(F)) .
     eq removeNumbers(X ~/=~ Y) = (removeNumber(X) ~/=~ removeNumber(Y))  .
     eq removeNumbers(X ~=~ Y) = (removeNumber(X) ~=~ removeNumber(Y))  .
     eq removeNumbers(#< I) = #< I .
@@ -555,21 +588,22 @@ mod RESOURCE-AWARE is
     eq substitute1(N, NotConsume) = NotConsume .
     eq substitute1(N, (~ F)) = ~ (substitute1(N, F)) .
     eq substitute1(N, M[F]) = (if (removeNumber(N) == M) then N else M fi)[substitute1(N, F)] .
-    eq substitute1(N, (<> I @ M F)) = <> I @ (if (removeNumber(N) == M) then N else M fi) substitute1(N, F) .
-    eq substitute1(N, (F @ M)) = substitute1(N, F) @ (if (removeNumber(N) == M) then N else M fi) .
-    eq substitute1(N, (F /\ G)) = substitute1(N, F) /\ substitute1(N, G) .
-    eq substitute1(N, (F \/ G)) = substitute1(N, F) \/ substitute1(N, G) .
-    eq substitute1(N, (F | G)) = substitute1(N, F) | substitute1(N, G) .
-    eq substitute1(N, (all Y . F)) = all Y . substitute1(N, F) .
-    eq substitute1(N, (alltop Y . F)) = alltop Y . substitute1(N, F) .
-    eq substitute1(N, (exists Y . F)) = exists Y . substitute1(N, F) .
-    eq substitute1(N, (<> O I F)) = <> O I substitute1(N, F) .
-    eq substitute1(N, ((+) F)) = (+) substitute1(N, F) .
+    eq substitute1(N, <> I @ M F) = <> I @ (if (removeNumber(N) == M) then N else M fi) substitute1(N, F) .
+    eq substitute1(N, F @ M) = substitute1(N, F) @ (if (removeNumber(N) == M) then N else M fi) .
+    eq substitute1(N, F /\ G) = substitute1(N, F) /\ substitute1(N, G) .
+    eq substitute1(N, F \/ G) = substitute1(N, F) \/ substitute1(N, G) .
+    eq substitute1(N, F | G) = substitute1(N, F) | substitute1(N, G) .
+    eq substitute1(N, all Y . F) = all Y . substitute1(N, F) .
+    eq substitute1(N, alltop Y . F) = alltop Y . substitute1(N, F) .
+    eq substitute1(N, exists Y . F) = exists Y . substitute1(N, F) .
+    eq substitute1(N, <> O I F) = <> O I substitute1(N, F) .
+    eq substitute1(N, (+) F) = (+) substitute1(N, F) .
+    eq substitute1(N, anyone(F)) = anyone(substitute1(N, F)) .
+    eq substitute1(N, none(F)) = none(substitute1(N, F)) .
     eq substitute1(N, X ~/=~ Y) = if (removeNumber(N) == X) then N else X fi ~/=~ if (removeNumber(N) == Y) then N else Y fi  .
     eq substitute1(N, X ~=~ Y) = if (removeNumber(N) == X) then N else X fi ~=~ if (removeNumber(N) == Y) then N else Y fi  .
     eq substitute1(N, #< I) = #< I .
     eq substitute1(N, #> I) = #> I .
-
 
     op substitute1 : Name VTA -> VTA .
     eq substitute1(N, zero) = zero .
@@ -589,6 +623,7 @@ mod RESOURCE-AWARE is
     --- Additional cases for names
     eq names(! P) =  names(P) .
     eq names(!< Names > P) =  names(P) .
+    eq names(G ? P) =  empty .
 
     var Names : Set{Servable} .
     var PrivateNames : [Set{Servable}] .
@@ -636,16 +671,10 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     vars X Y : Name .
 
     ops MIN MAX : -> Nat .
-    eq MIN = 2 .
+    eq MIN = 1 .
     eq MAX = 4 .
 
     --- Remember to mirror the changes in the big example if this goes well.
-    op full_ : Name -> Formula .
-    eq full(X) = (+)'asg[ (X[True] /\ Consume) | True] .
-
-    op empty_ : Name -> Formula .
-    eq empty(X) = (+)'asg[ (X[True] /\ NotConsume) | True] .
-
     op nameExists_ : Name -> Formula .
     eq nameExists(Y) = exists 'x . ('x ~=~ Y)  .
 
@@ -653,16 +682,16 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     eq nameExistsNot(Y) = all 'x . ('x ~/=~ Y) .
 
     op notVMorFull : Name -> Formula .
-    eq notVMorFull(X) = (X[nameExistsNot('isVM) \/ Consume ] | True) .
+    eq notVMorFull(X) = (anyone(X[nameExistsNot('isVM) \/ Consume ])) .
 
     op moveGuard_ : Name -> Formula .
-    eq moveGuard(X) = (((+)'asg[ nameExists('request) /\ ( (X[True] /\ NotConsume) | True  )]) | True) .
+    eq moveGuard(X) = ((+) anyone('asg[ ( anyone('request[True])) /\ ( anyone(X[True] /\ NotConsume) )])).
 
     op restartGuard_ : Name -> Formula .
-    eq restartGuard(X) = (((+)'asg[ (nameExists('request) /\ ((X[True] /\ NotConsume) | ('registry[True] /\ (#< MIN)) | True)) \/  ( (X[True] /\ Consume) | True  )]) | True) .
+    eq restartGuard(X) = ((+) anyone('asg[ ( anyone('request[True])) /\  (anyone(X[True] /\ Consume)) ])) .
 
     op deleteGuard_ : Name -> Formula .
-    eq deleteGuard(X) =  (((+)'asg[ (nameExistsNot('request) /\ ((X[True] /\ NotConsume) | ('registry[True] /\ (#> MIN)) | True))]) | True) .
+    eq deleteGuard(X) =  ((+) anyone('asg[ (none('request[True])) /\ (anyone(X[True] /\ NotConsume)) /\ (anyone('registry[True] /\ (#> MIN)))])) .
 
 op virtualMachine0 : Name -> VTA .
 eq virtualMachine0(X) =
@@ -734,15 +763,6 @@ eq scaling1 =  !< 'vm > (open('scaling_lock) .
             (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) ))] | True ))
             ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine1('vm))))) .
 
-
---- 3. combining bigger VM and #of vms. (not tried yet, because I don't even see what happens in 2.)
-op scaling2 : -> VTA .
-eq scaling2 =  !< 'vm > (open('scaling_lock) .
-                      (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) )) /\ (('registry[True] /\ (#< sd(MAX,1))) | True  )] | True ))
-            ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine1('vm))))) .
-
---- 4. Tata. If everything reduces properly then the example is done.
-
 --- 0. Basics. this works
 op scaling0 : -> VTA .
 eq scaling0 =  !< 'vm > (open('scaling_lock) .
@@ -755,6 +775,19 @@ op scaling : -> VTA .
 eq scaling =  !< 'vm > (open('scaling_lock) .
             (((+) ('asg[ nameExists('request) /\ (nameExistsNot('isVM) \/ alltop 'y . ( notVMorFull('y) )) /\ (('registry[True] /\ (#< MAX)) | True  )] | True ))
               ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
+
+
+--- 1A. New Anyone and None things - works and is much faster.
+op scaling3 : -> VTA .
+eq scaling3 =  !< 'vm > (open('scaling_lock) .
+            (((+) anyone('asg[ (anyone('request[True])) /\ ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ alltop 'y . ( notVMorFull('y) )) /\ (anyone('registry[True] /\ (#< sd(MAX,1))))]))
+              ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
+
+--- 2A. adding the bigger VM . and combining with new guards.
+op scaling4 : -> VTA .
+eq scaling4 =  !< 'vm , 'counter > (open('scaling_lock) .
+            (((+) anyone('asg[ (anyone('request[True])) /\ ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ alltop 'y . ( notVMorFull('y) )) /\ (anyone('registry[True] /\ (#< sd(MAX,1))))]))
+            ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine1('vm))))) .
 
 
 
@@ -776,7 +809,7 @@ eq registry =
     op asg : -> VTA .
     eq asg = 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)}
 	  | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
-	  | scaling1
+	  | scaling4
     | registry
     | 'global_lock[sdl | zero]
     |  (open('key) . zero)
@@ -786,12 +819,25 @@ eq registry =
 	  ] .
 
     op smallexample : -> VTA .
-    eq smallexample = 'cloud[sdl(('asg, 'request, 'trash)) | asg | trash | request(1)] .
+    eq smallexample = 'cloud[sdl(('asg, 'request, 'request, 'request, 'request, 'trash)) | asg | trash | request(2) | request(2) | request(2) | request(2)] .
+
+--- smallexample should create one vm0, have vm1 behind the guard and vm2 behind lock and guard.
+--- then a lot of internal movement stuff should happen, the request should move into vm0 and be opened
+--- vm0 should get ticks from asg and the consume capability should go away.
 
 endm
 
 --- should create one ‘vm and then stop doing things
---- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling6 | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry)} | tick | tick | 'scaling_lock[sdl | zero] | registry ] | request(1)] }.
 
---- rew { smallexample } .
+--- rew 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] |= ((+) anyone('asg[True])).
 
+--- should create one ‘vm and then stop doing things
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
+
+--- should create one ‘vm and then stop doing things
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling3 | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
+
+rew 'a[sdl(('b,'b,'b)) | zero ] .
+
+rew {smallexample} .
