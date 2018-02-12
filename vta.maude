@@ -23,9 +23,45 @@ endfm
 fmod VTA-SORTS is
     pr NAME .
 
-    sorts Scheduler Tick Servable VTA .
+    sorts Scheduler Tick VTA Servable NeServables Servables .
     subsort Tick < VTA .
-    subsort VTA Name < Servable .
+    subsort VTA Name < Servable < NeServables < Servables .
+
+    var N : NeServables .
+    vars E E' : Servable .
+    vars A S S' : Servables .
+    var C : Nat .
+
+    op none : -> Servables [ctor] .
+    op _:_ : Servables Servables -> Servables [ctor assoc comm id: none prec 121 format (d r os d)] .
+    op _:_ : NeServables Servables -> NeServables [ctor ditto] .
+
+    op _element_ : Servable Servables -> Bool .
+    eq E element (E : S) = true .
+    eq E element S = false [owise] .
+
+    op size : Servables -> Nat .
+    op size : NeServables -> NzNat .
+    eq size(S) = size1(S, 0) .
+
+    op size1 : Servables Nat -> Nat .
+    eq size1(none, C) = C .
+    eq size1((N : N : S), C) = size1((N : S), C) .
+    eq size1((E : S), C) = size1(S, C + 1) [owise] .
+
+    op merge : Servables Servables -> Servables .
+    op merge : NeServables Servables -> NeServables .
+    op merge : Servables NeServables -> NeServables .
+    eq merge(S, S') = S : S' .
+
+    op remove : Servables Servable -> Servables  .
+    eq remove(none, E) = none .
+    eq remove((E : S), E) = S .
+    eq remove((E : S), E') = E : remove(S, E') [owise] .
+
+    --- op remove1 : Servables Servables Servables -> Servables .
+    --- eq remove1(none, S', A) = A .
+    --- eq remove1((E : S), S', A) = remove1(S, S', if E element S' then A else E : A fi) .
 endfm
 
 view Servable from TRIV to VTA-SORTS is
@@ -36,49 +72,48 @@ fmod VTA-OPS is
     pr RAT .
     pr VTA-SORTS .
     pr CAPABILITY .
-    pr SET{Servable} .
 
     op tick : -> Tick .
 
     op sdl : -> Scheduler .
-    eq sdl = sched 0 {0, 0, 0, empty, empty} .
-    op sdl : Set{Servable} -> Scheduler .
-    eq sdl(Unserved) = sched 0 {0, 0, 0, empty, Unserved} .
+    eq sdl = sched 0 {0, 0, 0, none, none} .
+    op sdl : Servables -> Scheduler .
+    eq sdl(Unserved) = sched 0 {0, 0, 0, none, Unserved} .
 
-    op sched_{_,_,_,_,_} : Rat Nat Nat Nat Set{Servable} Set{Servable} -> Scheduler .
+    op sched_{_,_,_,_,_} : Rat Nat Nat Nat Servables Servables -> Scheduler .
 
     op zero : -> VTA [ctor] .
     op _|_ : VTA VTA -> VTA [id: zero assoc comm prec 90 format (d ni d d)] .
     op _._ : Capability VTA -> VTA [prec 80 frozen (2)] .
     op _[_|_] : Name Scheduler VTA -> VTA [prec 70 format (g++ o d ni d d --)] .
 
-    var Unserved : Set{Servable} .
+    var Unserved : Servables .
     vars P Q : VTA .
     var Ca : Capability .
     var Sc : Scheduler .
     var N : Name .
 
-    op names : Capability -> Set{Servable} .
-    eq names(c) = empty .
+    op names : Capability -> Servables .
+    eq names(c) = none .
     eq names(in(N)) = N .
     eq names(out(N)) = N .
     eq names(open(N)) = N .
 
-    op names : VTA -> Set{Servable} .
-    eq names(zero) = empty .
-    eq names(tick) = empty .
+    op names : VTA -> Servables .
+    eq names(zero) = none .
+    eq names(tick) = none .
     eq names(Ca . P) = names(Ca) .
-    eq names(N[Sc | P]) = N, names(P) .
-    ceq names(P | Q) = names(P), names(Q) if P =/= zero and Q =/= zero .
+    eq names(N[Sc | P]) = N : names(P) .
+    ceq names(P | Q) = names(P) : names(Q) if P =/= zero and Q =/= zero .
 
-    op barb : VTA -> Set{Servable} .
+    op barb : VTA -> Servables .
     eq barb(Ca . P | Q) = barb(Q) .
-    eq barb(N[Sc | P] | Q) = N, barb(Q) .
-    eq barb(P) = empty [owise] .
+    eq barb(N[Sc | P] | Q) = N : barb(Q) .
+    eq barb(P) = none [owise] .
 
-    op getConsume : Set{Servable} -> Servable .
-    eq getConsume(((c . P), Unserved)) = c . P .
-    eq getConsume(Unserved) = empty [owise] .
+    op getConsume : Servables -> Servable .
+    eq getConsume(((c . P) : Unserved)) = c . P .
+    eq getConsume(Unserved) = none [owise] .
 endfm
 
 fmod EGYPTIAN is
@@ -122,7 +157,6 @@ mod VTA-CALCULUS is
     pr INT .
     pr RAT .
     pr BOOL .
-    pr SET{Servable} .
     pr EGYPTIAN .
     pr VTA-OPS .
 
@@ -132,28 +166,28 @@ mod VTA-CALCULUS is
     vars Sc Sc1 Sc2 Sc3 : Scheduler .
     var Ca : Capability .
     vars P Q R U : VTA .
-    vars Served Unserved : Set{Servable} .
-    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
+    vars Served Unserved : Servables .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servables .
 
     crl [open] :
         M[sched Speed {InM, OutM, RestM, Unserved, Served}
           | open(N) . P | N[Sc | R] | Q]
       =>
         M[sched Speed {InM, OutM, RestM, UnSrvM, SrvM} | P | Q | R]
-      if  UnSrvM := (Unserved \ N) /\
-          SrvM := (Served \ N), barb(P), barb(R) /\
-          N in (Served, Unserved) .
+      if  UnSrvM := remove(Unserved, N) /\
+          SrvM := remove(Served, N) : barb(P) : barb(R) /\
+          N element merge(Served, Unserved) .
 
     crl [in] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | in(M) . P | Q]
           | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
-        K[sched SpdK {InK, OutK, RestK, (UnSrvK \ N), (SrvK \ N)}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, union(UnSrvM, N)} | R
-            | N[sched SpdN {InN, OutN, RestN, SrvN, union(UnSrvN, barb(P))}
+        K[sched SpdK {InK, OutK, RestK, remove(UnSrvK, N), remove(SrvK, N)}
+          | M[sched SpdM {InM, OutM, RestM, SrvM, merge(UnSrvM, N)} | R
+            | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))}
               | P | Q]] | U]
-      if  N in union(UnSrvK, SrvK) .
+      if  N element merge(UnSrvK, SrvK) .
 
     crl [out] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
@@ -161,47 +195,47 @@ mod VTA-CALCULUS is
             | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN}
               | out(M) . P | Q]] | U]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
-          | N[sched SpdN {InN, OutN, RestN, SrvN, (UnSrvN, barb(P))} | P | Q]
-          | M[sched SpdM {InM, OutM, RestM, (SrvM \ N), (UnSrvM \ N)} | R] | U]
-      if  N in (SrvM, UnSrvM) .
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, merge(SrvK, N)}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))} | P | Q]
+          | M[sched SpdM {InM, OutM, RestM, remove(SrvM, N), remove(UnSrvM, N)} | R] | U]
+      if  N element merge(SrvM, UnSrvM) .
 
     crl [consumption] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK} | c . P | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, (c . P))} | R]
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : (c . P))} | R]
       if SpdK > 0 .
 
-    rl [empty]:
-        K[sched SpdK {InK, 0, 0, empty, empty} | tick | R]
+    rl [none]:
+        K[sched SpdK {InK, 0, 0, none, none} | tick | R]
       =>
-        K[sched SpdK {s(InK), 0, 0, empty, empty} | R] .
+        K[sched SpdK {s(InK), 0, 0, none, none} | R] .
 
     crl [tick]:
         K[sched SpdK {InK, 0, 0, UnSrvK, SrvK} | tick | R]
       =>
         K[sched SpdK {s(InK), OutN, RestN, UnSrvK, SrvK} | R]
-      if  OutN RestN := speed(SpdK) /\ | UnSrvK, SrvK | > 0 .
+      if  OutN RestN := speed(SpdK) /\ size(merge(UnSrvK, SrvK)) > 0 .
 
     crl [new-round-consumption] :
-        K[sched SpdK {InK, OutK, RestK, empty, SrvK} | R]
+        K[sched SpdK {InK, OutK, RestK, none, SrvK} | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, SrvK, empty} | R]
-      if | SrvK | > 0  /\ (c . P) := getConsume(SrvK) .
+        K[sched SpdK {InK, OutK, RestK, SrvK, none} | R]
+      if size(SrvK) > 0  /\ (c . P) := getConsume(SrvK) .
 
     crl [new-round-ambient] :
-        K[sched SpdK {InK, OutK, RestK, empty, (SrvK, N)}
+        K[sched SpdK {InK, OutK, RestK, none, (SrvK : N)}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, (SrvK, N), empty}
+        K[sched SpdK {InK, OutK, RestK, (SrvK : N), none}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
-      if | SrvK | > 0  /\ SpdN > 0 .
+      if size(SrvK) > 0  /\ SpdN > 0 .
 
     rl [zero-speed-ambients] :
-        K[sched SpdK {InK, OutK, RestK, (UnSrvK, N), SrvK}
+        K[sched SpdK {InK, OutK, RestK, (UnSrvK : N), SrvK}
           | N[sched 0 {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : N)}
           | N[sched 0 {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R] .
 
     crl [primary-tock-consume] :
@@ -209,13 +243,13 @@ mod VTA-CALCULUS is
       =>
         K[sched SpdK {InK, OutK, RestK, UnSrvN, SrvK} | R | P]
       if  (c . P) := getConsume(UnSrvK) /\
-          UnSrvN := (barb(P), UnSrvK \ (c . P)) .
+          UnSrvN := merge(barb(P), remove(UnSrvK, (c . P))) .
 
     crl [primary-tock-ambient] :
-        K[sched SpdK {InK, s(OutK), RestK, (UnSrvK, N), SrvK}
+        K[sched SpdK {InK, s(OutK), RestK, (UnSrvK : N), SrvK}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : N)}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R]
         if SpdN > 0 .
 
@@ -225,13 +259,13 @@ mod VTA-CALCULUS is
         K[sched SpdK {InK, OutK, RestK, UnSrvN, SrvK} | R | P]
       if  InK rem getFraction(s(RestK), SpdK) == 0 /\
           (c . P) := getConsume(UnSrvK) /\
-          UnSrvN := (barb(P), UnSrvK \ (c . P)) .
+          UnSrvN := merge(barb(P), remove(UnSrvK, (c . P))) .
 
     crl [secondary-tock-ambient1] :
-        K[sched SpdK {InK, OutK, s(RestK), (UnSrvK, N), SrvK}
+        K[sched SpdK {InK, OutK, s(RestK), (UnSrvK : N), SrvK}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK, N)}
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : N)}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R]
       if InK rem getFraction(s(RestK), SpdK) == 0 /\ SpdN > 0 .
 
@@ -301,15 +335,15 @@ mod VTA-FORMULA is
     var Sc : Scheduler .
     var Ca : Capability .
     vars P Q : VTA .
-    vars NS MS : Set{Servable} .
+    vars NS MS : Servables .
     var Ser : Servable .
 
     op allsubs : Name VTA Formula -> Formula .
     eq allsubs(X, P, F) = allsubs'(X, names(P), F) .
 
-    op allsubs' : Name Set{Servable} Formula -> Formula .
-    eq allsubs'(X, empty, F) = True .
-    eq allsubs'(X, (N, NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
+    op allsubs' : Name Servables Formula -> Formula .
+    eq allsubs'(X, none, F) = True .
+    eq allsubs'(X, (N : NS), F) =  F[X <- N] /\ allsubs'(X, NS, F) .
 
     op alltopsubs : Name VTA Formula -> Formula .
     eq alltopsubs(X, P, F) = allsubs'(X, barb(P), F) .
@@ -317,13 +351,13 @@ mod VTA-FORMULA is
     op allsubsExist : Name VTA Formula -> Formula .
     eq allsubsExist(X, P, F) = allsubsExist'(X, names(P), F) .
 
-    op allsubsExist' : Name Set{Servable} Formula -> Formula .
-    eq allsubsExist'(X, empty, F) = False .
-    eq allsubsExist'(X, (N, NS), F) =  F[X <- N] \/ allsubsExist'(X, NS, F) .
+    op allsubsExist' : Name Servables Formula -> Formula .
+    eq allsubsExist'(X, none, F) = False .
+    eq allsubsExist'(X, (N : NS), F) =  F[X <- N] \/ allsubsExist'(X, NS, F) .
 
     vars InN OutN RestN InM OutM RestM InK OutK RestK : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
-    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servables .
 
     op consumptions : VTA -> Bool .
     eq consumptions(c . P) = true .
@@ -340,35 +374,35 @@ mod VTA-FORMULA is
 
     op consumptions : Scheduler -> Bool .
     eq consumptions(sched Speed {InN, OutN, RestN, UnSrvN, SrvN}) =
-        consumptions1(union(UnSrvN, SrvN)) .
+        consumptions1(merge(UnSrvN, SrvN)) .
 
-    op consumptions1 : Set{Servable} -> Bool .
-    eq consumptions1(empty) = false .
-    eq consumptions1((Ser, NS)) = consumptions(Ser) or consumptions1(NS) .
+    op consumptions1 : Servables -> Bool .
+    eq consumptions1(none) = false .
+    eq consumptions1((Ser : NS)) = consumptions(Ser) or consumptions1(NS) .
 
     op accumulatespeed : Scheduler VTA -> VTA .
     eq accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK},
           (N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | P] | Q))
       =
-        N[sched ((SpdK * SpdN) / | union(UnSrvK, SrvK) |)
+        N[sched ((SpdK * SpdN) / size(merge(UnSrvK, SrvK)))
           {InN, OutN, RestN, SrvN, UnSrvN} | P] |
         accumulatespeed(sched SpdK{InK, OutK, RestK, UnSrvK, SrvK}, Q) .
     ceq accumulatespeed(Sc, P | Q) = accumulatespeed(Sc, P) | accumulatespeed(Sc, Q)
       if P =/= zero and Q =/= zero .
     eq accumulatespeed(Sc, P) = zero [owise] .
 
-    op sublocations : VTA -> Set{Servable} .
-    ceq sublocations(P | Q) = sublocations(P), sublocations(Q)
+    op sublocations : VTA -> Servables .
+    ceq sublocations(P | Q) = sublocations(P) : sublocations(Q)
       if P =/= zero and Q =/= zero .
-    ceq sublocations(N[Sc | P]) = N[Sc | P], Q, sublocations(Q)
+    ceq sublocations(N[Sc | P]) = N[Sc | P] : Q : sublocations(Q)
       if Q := accumulatespeed(Sc, P) .
     eq sublocations(P) = P [owise] .
 
-    op siblings : VTA -> Set{Servable} .
-    ceq siblings(P | Q) = siblings(P), siblings(Q)
+    op siblings : VTA -> Servables .
+    ceq siblings(P | Q) = siblings(P) : siblings(Q)
       if P =/= zero and Q =/= zero .
     eq siblings(N[Sc | P]) = N[Sc | P] .
-    eq siblings(P) = empty [owise] .
+    eq siblings(P) = none [owise] .
 
     op contains : VTA Name -> Bool .
     ceq contains(P | Q, X) = contains(P, X) or contains(Q, X)
@@ -412,9 +446,9 @@ mod VTA-SATISFACTION is
     eq [Consumption] : P |= Consume = consumptions(P) .
     eq [NotConsumption] : P |= NotConsume = not(consumptions(P)) .
     eq [LessSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
-        |= #< S  = | SrvN, UnSrvN | <= S .
+        |= #< S  = size(merge(SrvN, UnSrvN)) <= S .
     eq [MoreSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
-        |= #> S  = | SrvN, UnSrvN | > S .
+        |= #> S  = size(merge(SrvN, UnSrvN)) > S .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
       if  Ps := siblings(P) .
     ceq [AnyOne] : P |= anyone(F) = anysat(Ps, F)
@@ -438,28 +472,28 @@ mod VTA-SATISFACTION is
     eq [NamesIdentical] : P |= X ~=~ Y  = X == Y .
     eq [NamesDifferent] : P |= X ~/=~ Y = X =/= Y .
 
-    var Ps : Set{Servable} .
+    var Ps : Servables .
     vars R : Rat .
     vars A : Nat .
     vars InN OutN RestN InM OutM RestM InK OutK RestK : Nat .
     vars Speed SpdN SpdM SpdK : Rat .
-    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Set{Servable} .
+    vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servables .
 
-    op somewhere : Set{Servable} Rat Nat Formula -> Bool .
-    eq somewhere((N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P], Ps), R, A, F) =
+    op somewhere : Servables Rat Nat Formula -> Bool .
+    eq somewhere((N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P] : Ps), R, A, F) =
         ((P |= F)
           and (Speed >= R)
-          and (| SrvN, UnSrvN | <= A))
+          and (size(merge(SrvN, UnSrvN)) <= A))
         or somewhere(Ps, R, A, F) .
     eq somewhere(Ps, R, A, F) = false [owise] .
 
-    op spatialnext : Set{Servable} Formula -> Bool .
-    eq spatialnext((N[Sc | P], Ps), F) = (P |= F) or spatialnext(Ps, F) .
+    op spatialnext : Servables Formula -> Bool .
+    eq spatialnext((N[Sc | P] : Ps), F) = (P |= F) or spatialnext(Ps, F) .
     eq spatialnext(Ps, F) = false [owise] .
 
-    op anysat : Set{Servable} Formula -> Bool .
-    eq anysat((P , Ps), F) = (P |= F) or anysat(Ps, F) .
-    eq anysat(empty, F) = false [owise] .
+    op anysat : Servables Formula -> Bool .
+    eq anysat((P : Ps), F) = (P |= F) or anysat(Ps, F) .
+    eq anysat(none, F) = false [owise] .
 
 endm
 
@@ -488,7 +522,7 @@ mod RESOURCE-AWARE is
     var Sdl : Scheduler .
     vars In Out Rest : Nat .
     vars Speed : Rat .
-    vars Served Unserved : Set{Servable} .
+    vars Served Unserved : Servables .
 
     op findGuards : VTA -> Set{Formula} .
     eq findGuards(G ? P) = G .
@@ -498,7 +532,7 @@ mod RESOURCE-AWARE is
 
     op removeGuard : VTA Formula -> VTA .
     eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
-        N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | P | Q] .
+        N[sched Speed {In, Out, Rest, Served, merge(Unserved, barb(P))} | P | Q] .
     ceq removeGuard(F ? P, G) = F ? P if F =/= G .
     ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
     eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
@@ -571,9 +605,9 @@ mod RESOURCE-AWARE is
     eq P contains1 P = true .
     eq Q contains1 P = false [owise] .
 
-    op substitute : Set{Servable} VTA -> VTA .
-    eq substitute(empty, P) = P .
-    eq substitute((N, Names), P) = substitute(Names, substitute1(N, P)) .
+    op substitute : Servables VTA -> VTA .
+    eq substitute(none, P) = P .
+    eq substitute((N : Names), P) = substitute(Names, substitute1(N, P)) .
 
     op substitute1 : Name Capability -> Capability .
     ceq substitute1(N, in(M)) = in(N) if removeNumber(N) == M .
@@ -623,27 +657,27 @@ mod RESOURCE-AWARE is
     --- Additional cases for names
     eq names(! P) =  names(P) .
     eq names(!< Names > P) =  names(P) .
-    eq names(G ? P) =  empty .
+    eq names(G ? P) =  none .
 
-    var Names : Set{Servable} .
-    var PrivateNames : [Set{Servable}] .
+    var Names : Servables .
+    var PrivateNames : [Servables] .
 
     op makePrivateName : Name -> Name .
     eq makePrivateName(N) = qid(string(N) + string(counter, 10)) .
 
-    op makePrivateNames : Set{Servable} -> Set{Servable} .
-    eq makePrivateNames(empty) = empty .
-    eq makePrivateNames((N, Names)) = makePrivateName(N), makePrivateNames(Names) .
+    op makePrivateNames : Servables -> Servables .
+    eq makePrivateNames(none) = none .
+    eq makePrivateNames((N : Names)) = makePrivateName(N) : makePrivateNames(Names) .
 
     op !_ : VTA -> VTA .
-    op !<_>_ : Set{Servable} VTA -> VTA .
+    op !<_>_ : Servables VTA -> VTA .
 
     crl [Replication] : { ! P | Q } => { ! P | P | Q } if not(Q contains P) .
 
     crl [AmbientReplication] :
         N[sched Speed {In, Out, Rest, Served, Unserved} | ! P | Q]
       =>
-        N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))} | ! P | P | Q]
+        N[sched Speed {In, Out, Rest, Served, merge(Unserved, barb(P))} | ! P | P | Q]
       if not(Q contains P) .
 
     crl [PrivateReplication] :
@@ -655,7 +689,7 @@ mod RESOURCE-AWARE is
     crl [PrivateAmbientReplication] :
         N[sched Speed {In, Out, Rest, Served, Unserved}| !< Names > P | Q]
       =>
-        N[sched Speed {In, Out, Rest, Served, (Unserved, barb(P))}
+        N[sched Speed {In, Out, Rest, Served, merge(Unserved, barb(P))}
           | !< Names > P | substitute(PrivateNames, P) | Q]
       if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
 
@@ -695,7 +729,7 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
 
 op virtualMachine0 : Name -> VTA .
 eq virtualMachine0(X) =
-                      X[sched 1 {0, 0, 0, empty, ('scaling_lock, 'move)}
+                      X[sched 1 {0, 0, 0, none, ('scaling_lock : 'move)}
                       | 'isVM[sdl | zero]
                       | moveTo(X)
                       | (open('request) . zero)
@@ -703,14 +737,14 @@ eq virtualMachine0(X) =
 
 op virtualMachine : Name -> VTA .
 eq virtualMachine(X) =
-                          X[sched 1 {0, 0, 0, empty, ('start,'isVM, 'scaling_lock)}
+                          X[sched 1 {0, 0, 0, none, ('start : 'isVM : 'scaling_lock)}
                             | 'start[sdl | zero] | 'isVM[sdl | zero] | 'scaling_lock[sdl | out(X) . zero]
                             |  ! (open('start) . 'key[sdl | out(X) . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
                             |  ! (open('private_lock)  . 'decision[sdl('local_lock)| 'local_lock[sdl | zero]])] .
 
 
 op virtualMachine1 : Name -> VTA .
-eq virtualMachine1(X) =  X[sched 1 {0, 0, 0, empty, ('start,'isVM, 'scaling_lock)}
+eq virtualMachine1(X) =  X[sched 1 {0, 0, 0, none, ('start : 'isVM : 'scaling_lock)}
                                   | 'start[sdl | zero]
                                   | 'scaling_lock[sdl | out(X) . zero]
                                   | ! (open('request) . zero)
@@ -785,7 +819,7 @@ eq scaling3 =  !< 'vm > (open('scaling_lock) .
 
 --- 2A. adding the bigger VM . and combining with new guards.
 op scaling4 : -> VTA .
-eq scaling4 =  !< 'vm , 'counter > (open('scaling_lock) .
+eq scaling4 =  !< 'vm : 'counter > (open('scaling_lock) .
             (((+) anyone('asg[ (anyone('request[True])) /\ ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ alltop 'y . ( notVMorFull('y) )) /\ (anyone('registry[True] /\ (#< sd(MAX,1))))]))
             ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine1('vm))))) .
 
@@ -807,7 +841,7 @@ eq registry =
     eq trash = 'trash[sdl | zero ] .
 
     op asg : -> VTA .
-    eq asg = 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)}
+    eq asg = 'asg[sched 1 {0, 0, 0, none, ('scaling_lock : 'registry : 'global_lock)}
 	  | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
 	  | scaling4
     | registry
@@ -819,7 +853,7 @@ eq registry =
 	  ] .
 
     op smallexample : -> VTA .
-    eq smallexample = 'cloud[sdl(('asg, 'request, 'request, 'request, 'request, 'trash)) | asg | trash | request(2) | request(2) | request(2) | request(2)] .
+    eq smallexample = 'cloud[sdl(('asg : 'request : 'request : 'trash)) | asg | trash | request(2) | request(2)] .
 
 --- smallexample should create one vm0, have vm1 behind the guard and vm2 behind lock and guard.
 --- then a lot of internal movement stuff should happen, the request should move into vm0 and be opened
@@ -828,16 +862,16 @@ eq registry =
 endm
 
 --- should create one ‘vm and then stop doing things
---- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry)} | tick | tick | 'scaling_lock[sdl | zero] | registry ] | request(1)] }.
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, none, ('scaling_lock, 'registry)} | tick | tick | 'scaling_lock[sdl | zero] | registry ] | request(1)] }.
 
---- rew 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] |= ((+) anyone('asg[True])).
-
---- should create one ‘vm and then stop doing things
---- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
+--- rew 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, none, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] |= ((+) anyone('asg[True])).
 
 --- should create one ‘vm and then stop doing things
---- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, empty, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling3 | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, none, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
 
-rew 'a[sdl(('b,'b,'b)) | zero ] .
+--- should create one ‘vm and then stop doing things
+--- rew { 'cloud[sdl(('asg, 'request))  | 'asg[sched 1 {0, 0, 0, none, ('scaling_lock, 'registry, 'global_lock)} | tick | tick | scaling3 | 'scaling_lock[sdl | zero] | 'global_lock[sdl | zero] | open('key) . zero | registry ] | request(1)] }.
 
-rew {smallexample} .
+--- rew 'a[sdl(('b:'b:'b)) | zero ] .
+
+--- rew[1] {smallexample} .
