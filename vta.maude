@@ -329,8 +329,6 @@ mod VTA-FORMULA is
     op #<_ : Nat -> Formula [prec 53 format (r d o)] .
     op #>_ : Nat -> Formula [prec 53 format (r d o)] .
     op _@_ : Formula Name -> Formula [format (r d d o)] .
-    op _~/=~_ : Name Name -> Formula [format (r d d o)] .
-    op _~=~_ : Name Name -> Formula [format (r d d o)] .
 
     vars N M X Y : Name .
     vars F G : Formula .
@@ -354,8 +352,6 @@ mod VTA-FORMULA is
     eq (anyone(F))[X <- N] = anyone(F[X <- N]) .
     eq (none(F))[X <- N] = none(F[X <- N]) .
     eq ((+) F)[X <- N] = (+) (F[X <- N]) .
-    eq (Y ~=~ M)[X <- N] = if Y == X then N else Y fi ~=~ if M == X then N else M fi .
-    eq (Y ~/=~ M)[X <- N] = if Y == X then N else Y fi ~/=~ if M == X then N else M fi .
     eq F[N <- X] = F [owise] .
 
     var Sc : Scheduler .
@@ -495,9 +491,6 @@ mod VTA-SATISFACTION is
           contains(Q, X) /\
           Q |= F => true .
 
-    eq [NamesIdentical] : P |= X ~=~ Y  = X == Y .
-    eq [NamesDifferent] : P |= X ~/=~ Y = X =/= Y .
-
     var Ps : Servables .
     vars R : Rat .
     vars A : Nat .
@@ -618,8 +611,6 @@ mod RESOURCE-AWARE is
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
     eq removeNumbers(anyone(F)) = anyone(removeNumbers(F)) .
     eq removeNumbers(none(F)) = none(removeNumbers(F)) .
-    eq removeNumbers(X ~/=~ Y) = (removeNumber(X) ~/=~ removeNumber(Y))  .
-    eq removeNumbers(X ~=~ Y) = (removeNumber(X) ~=~ removeNumber(Y))  .
     eq removeNumbers(#< I) = #< I .
     eq removeNumbers(#> I) = #> I .
 
@@ -660,8 +651,6 @@ mod RESOURCE-AWARE is
     eq substitute1(N, (+) F) = (+) substitute1(N, F) .
     eq substitute1(N, anyone(F)) = anyone(substitute1(N, F)) .
     eq substitute1(N, none(F)) = none(substitute1(N, F)) .
-    eq substitute1(N, X ~/=~ Y) = if (removeNumber(N) == X) then N else X fi ~/=~ if (removeNumber(N) == Y) then N else Y fi  .
-    eq substitute1(N, X ~=~ Y) = if (removeNumber(N) == X) then N else X fi ~=~ if (removeNumber(N) == Y) then N else Y fi  .
     eq substitute1(N, #< I) = #< I .
     eq substitute1(N, #> I) = #> I .
 
