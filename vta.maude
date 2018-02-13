@@ -27,9 +27,9 @@ fmod VTA-SORTS is
     subsort Tick < VTA .
     subsort VTA Name < Servable < NeServables < Servables .
 
-    var N : NeServables .
+    vars N A : NeServables .
     vars E E' : Servable .
-    vars A S S' : Servables .
+    vars S S' : Servables .
     var C : Nat .
 
     op none : -> Servables [ctor] .
@@ -59,9 +59,10 @@ fmod VTA-SORTS is
     eq remove((E : S), E) = S .
     eq remove((E : S), E') = E : remove(S, E') [owise] .
 
-    --- op remove1 : Servables Servables Servables -> Servables .
-    --- eq remove1(none, S', A) = A .
-    --- eq remove1((E : S), S', A) = remove1(S, S', if E element S' then A else E : A fi) .
+    op removeAll : Servables Servables -> Servables  .
+    eq removeAll(none, A) = none .
+    eq removeAll((A : S), A) = removeAll(S, A) .
+    eq removeAll((N : S), A) = N : removeAll(S, A) [owise] .
 endfm
 
 view Servable from TRIV to VTA-SORTS is
