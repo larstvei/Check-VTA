@@ -671,7 +671,7 @@ mod RESOURCE-AWARE is
 
     --- Additional cases for names
     eq names(! P) =  names(P) .
-    eq names(!< Names > P) =  names(P) .
+    eq names(!< Names > P) =  removeAll(names(P), Names) .
     eq names(G ? P) =  none .
 
     var Names : Servables .
