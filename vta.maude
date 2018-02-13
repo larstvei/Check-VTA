@@ -169,36 +169,66 @@ mod VTA-CALCULUS is
     vars Served Unserved : Servables .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servables .
 
-    crl [open] :
+    crl [open-unserved] :
         M[sched Speed {InM, OutM, RestM, Unserved, Served}
           | open(N) . P | N[Sc | R] | Q]
       =>
         M[sched Speed {InM, OutM, RestM, UnSrvM, SrvM} | P | Q | R]
-      if  UnSrvM := remove(Unserved, N) /\
-          SrvM := remove(Served, N) : barb(P) : barb(R) /\
-          N element merge(Served, Unserved) .
+      if  N element Unserved /\
+          UnSrvM := remove(Unserved, N) /\
+          SrvM := Served : barb(P) : barb(R) .
 
-    crl [in] :
+    crl [open-served] :
+        M[sched Speed {InM, OutM, RestM, Unserved, Served}
+          | open(N) . P | N[Sc | R] | Q]
+      =>
+        M[sched Speed {InM, OutM, RestM, Unserved, SrvM} | P | Q | R]
+      if  N element Served /\
+          SrvM := remove(Served, N) : barb(P) : barb(R) .
+
+    crl [in-unserved] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | in(M) . P | Q]
           | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
-        K[sched SpdK {InK, OutK, RestK, remove(UnSrvK, N), remove(SrvK, N)}
+        K[sched SpdK {InK, OutK, RestK, remove(UnSrvK, N), SrvK}
           | M[sched SpdM {InM, OutM, RestM, SrvM, merge(UnSrvM, N)} | R
             | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))}
               | P | Q]] | U]
-      if  N element merge(UnSrvK, SrvK) .
+      if  N element UnSrvK .
 
-    crl [out] :
+    crl [in-served] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R
-            | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN}
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | in(M) . P | Q]
+          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
+      =>
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, remove(SrvK, N)}
+          | M[sched SpdM {InM, OutM, RestM, SrvM, merge(UnSrvM, N)} | R
+            | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))}
+              | P | Q]] | U]
+      if  N element SrvK .
+
+    crl [out-unserved] :
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
+          | M[sched SpdM {InM, OutM, RestM, UnSrvM, SrvM} | R
+            | N[sched SpdN {InN, OutN, RestN, UnSrvN, SrvN}
               | out(M) . P | Q]] | U]
       =>
         K[sched SpdK {InK, OutK, RestK, UnSrvK, merge(SrvK, N)}
-          | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))} | P | Q]
-          | M[sched SpdM {InM, OutM, RestM, remove(SrvM, N), remove(UnSrvM, N)} | R] | U]
-      if  N element merge(SrvM, UnSrvM) .
+          | N[sched SpdN {InN, OutN, RestN, UnSrvN, merge(SrvN, barb(P))} | P | Q]
+          | M[sched SpdM {InM, OutM, RestM, remove(UnSrvM, N), SrvM} | R] | U]
+      if  N element UnSrvM .
+
+    crl [out-served] :
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
+          | M[sched SpdM {InM, OutM, RestM, UnSrvM, SrvM} | R
+            | N[sched SpdN {InN, OutN, RestN, UnSrvN, SrvN}
+              | out(M) . P | Q]] | U]
+      =>
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, merge(SrvK, N)}
+          | N[sched SpdN {InN, OutN, RestN, UnSrvN, merge(SrvN, barb(P))} | P | Q]
+          | M[sched SpdM {InM, OutM, RestM, UnSrvM, remove(SrvM, N)} | R] | U]
+      if  N element SrvM .
 
     crl [consumption] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK} | c . P | R]
@@ -705,7 +735,7 @@ mod AUTO-SCALING-SMALL-EXAMPLE is
     vars X Y : Name .
 
     ops MIN MAX : -> Nat .
-    eq MIN = 1 .
+    eq MIN = 2 .
     eq MAX = 4 .
 
     --- Remember to mirror the changes in the big example if this goes well.
@@ -874,4 +904,4 @@ endm
 
 --- rew 'a[sdl(('b:'b:'b)) | zero ] .
 
---- rew[1] {smallexample} .
+---frew {smallexample} .
