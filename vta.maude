@@ -94,22 +94,17 @@ fmod VTA-OPS is
     var Sc : Scheduler .
     var N : Name .
 
-    op names : Capability -> Servables .
-    eq names(c) = none .
-    eq names(in(N)) = N .
-    eq names(out(N)) = N .
-    eq names(open(N)) = N .
-
     op names : VTA -> Servables .
     eq names(zero) = none .
     eq names(tick) = none .
-    eq names(Ca . P) = names(Ca) .
+    eq names(Ca . P) = none .
     eq names(N[Sc | P]) = N : names(P) .
     ceq names(P | Q) = names(P) : names(Q) if P =/= zero and Q =/= zero .
 
     op barb : VTA -> Servables .
     eq barb(Ca . P | Q) = barb(Q) .
     eq barb(N[Sc | P] | Q) = N : barb(Q) .
+    ceq barb(P | Q) = barb(P) : barb(Q) if P =/= zero and Q =/= zero .
     eq barb(P) = none [owise] .
 
     op getConsume : Servables -> Servable .
