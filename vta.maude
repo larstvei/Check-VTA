@@ -715,8 +715,8 @@ mod AUTO-SCALING-EXAMPLE is
     eq MIN = 1 .
     eq MAX = 4 .
 
-    op notVMorFull : -> Formula .
-    eq notVMorFull = none(NotConsume /\ anyone('isVM[True])) .
+    op allVMsAreFull : -> Formula .
+    eq allVMsAreFull = none(NotConsume /\ ((+) anyone('isVM[True]))) .
 
     op moveGuard_ : Name -> Formula .
     eq moveGuard(X) = ((+) anyone('asg[ ( anyone('request[True])) /\ ( anyone(X[True] /\ NotConsume) )])).
@@ -728,7 +728,9 @@ mod AUTO-SCALING-EXAMPLE is
     eq deleteGuard(X) =  ((+) anyone('asg[ (none('request[True])) /\ (anyone(X[True] /\ NotConsume)) /\ (anyone('registry[True] /\ (#> MIN)))])) .
 
   op scalingGuard : -> Formula .
-  eq scalingGuard = ((+) anyone('asg[ (anyone('request[True])) /\ ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ notVMorFull) /\ (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
+  eq scalingGuard = ((+) anyone('asg[ (anyone('request[True])) /\
+                                ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ allVMsAreFull) /\
+                                (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
 
 op virtualMachine : Name -> VTA .
 eq virtualMachine(X) =  X[sched 1 {0, 0, 0, none, ('start : 'isVM : 'scaling_lock)}
@@ -820,4 +822,4 @@ eq registry =
 endm
 
 --- red names({!< 'd > ('a[sdl | 'd[sdl | 'b[sdl | zero] | open('c). zero]])}) .
-rew {example} .
+--- rew[1] {example} .
