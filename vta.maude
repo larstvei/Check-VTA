@@ -168,46 +168,40 @@ mod VTA-CALCULUS is
     vars Served Unserved : Servables .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servables .
 
-    crl [open-unserved] :
+    --- In the example we allow non-unique naming, leading to multisets in the
+    --- schedulers.
+
+    op makeUnserved : Name Servables Servables -> Servables .
+    op makeServed : Name Servables Servables -> Servables .
+
+    ceq makeUnserved(N, Unserved, Served) = Unserved
+      if N element Served or not(N element merge(Unserved, Served)) .
+    eq makeUnserved(N, Unserved, Served) = remove(Unserved, N) [owise] .
+
+    ceq makeServed(N, Unserved, Served) = remove(Served, N) if N element Served .
+    eq makeServed(N, Unserved, Served) = Served [owise] .
+
+    crl [open] :
         M[sched Speed {InM, OutM, RestM, Unserved, Served}
           | open(N) . P | N[Sc | R] | Q]
       =>
         M[sched Speed {InM, OutM, RestM, UnSrvM, SrvM} | P | Q | R]
-      if  N element Unserved /\
-          UnSrvM := remove(Unserved, N) /\
-          SrvM := Served : barb(P) : barb(R) .
+      if  UnSrvM := makeUnserved(N, Unserved, Served) /\
+          SrvM := makeServed(N, Unserved, Served) : barb(P) : barb(R) .
 
-    crl [open-served] :
-        M[sched Speed {InM, OutM, RestM, Unserved, Served}
-          | open(N) . P | N[Sc | R] | Q]
-      =>
-        M[sched Speed {InM, OutM, RestM, Unserved, SrvM} | P | Q | R]
-      if  N element Served /\
-          SrvM := remove(Served, N) : barb(P) : barb(R) .
-
-    crl [in-unserved] :
+    crl [in] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | in(M) . P | Q]
           | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
-        K[sched SpdK {InK, OutK, RestK, remove(UnSrvK, N), SrvK}
+        K[sched SpdK {InK, OutK, RestK, Unserved, Served}
           | M[sched SpdM {InM, OutM, RestM, SrvM, merge(UnSrvM, N)} | R
             | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))}
               | P | Q]] | U]
-      if  N element UnSrvK .
+      if  Unserved := makeUnserved(N, UnSrvK, SrvK) /\
+          Served   := makeServed(N, UnSrvK, SrvK) .
 
-    crl [in-served] :
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
-          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | in(M) . P | Q]
-          | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
-      =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, remove(SrvK, N)}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, merge(UnSrvM, N)} | R
-            | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))}
-              | P | Q]] | U]
-      if  N element SrvK .
-
-    crl [out-unserved] :
+    crl [out] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
           | M[sched SpdM {InM, OutM, RestM, UnSrvM, SrvM} | R
             | N[sched SpdN {InN, OutN, RestN, UnSrvN, SrvN}
@@ -215,19 +209,9 @@ mod VTA-CALCULUS is
       =>
         K[sched SpdK {InK, OutK, RestK, UnSrvK, merge(SrvK, N)}
           | N[sched SpdN {InN, OutN, RestN, UnSrvN, merge(SrvN, barb(P))} | P | Q]
-          | M[sched SpdM {InM, OutM, RestM, remove(UnSrvM, N), SrvM} | R] | U]
-      if  N element UnSrvM .
-
-    crl [out-served] :
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
-          | M[sched SpdM {InM, OutM, RestM, UnSrvM, SrvM} | R
-            | N[sched SpdN {InN, OutN, RestN, UnSrvN, SrvN}
-              | out(M) . P | Q]] | U]
-      =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, merge(SrvK, N)}
-          | N[sched SpdN {InN, OutN, RestN, UnSrvN, merge(SrvN, barb(P))} | P | Q]
-          | M[sched SpdM {InM, OutM, RestM, UnSrvM, remove(SrvM, N)} | R] | U]
-      if  N element SrvM .
+          | M[sched SpdM {InM, OutM, RestM, Unserved, Served} | R] | U]
+      if  Unserved := makeUnserved(N, UnSrvM, SrvM) /\
+          Served   := makeServed(N, UnSrvM, SrvM) .
 
     crl [consumption] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK} | c . P | R]
