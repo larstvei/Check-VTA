@@ -707,7 +707,7 @@ mod AUTO-SCALING-EXAMPLE is
                                 (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
 
 op virtualMachine : Name -> VTA .
-eq virtualMachine(X) =  X[sched 1 {0, 0, 0, none, ('start : 'isVM : 'scaling_lock)}
+eq virtualMachine(X) =  X[sched 1 {0, 0, 0, none, none}
                                   | 'start[sdl | zero]
                                   | 'scaling_lock[sdl | out(X) . zero]
                                   | ! (open('request) . zero)
@@ -756,7 +756,7 @@ eq remove(X) =
 op scaling : -> VTA .
 eq scaling =  !< 'vm : 'counter > (open('scaling_lock) .
             (scalingGuard
-            ? ('counter[sdl | in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
+            ? ('counter[sched 1 {0, 0, 0, none, none}| in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
 
 op registry : -> VTA .
 eq registry =
@@ -774,7 +774,7 @@ eq registry =
     eq trash = 'trash[sdl | zero ] .
 
     op asg : -> VTA .
-    eq asg = 'asg[sched 1 {0, 0, 0, none, ('scaling_lock : 'registry : 'global_lock)}
+    eq asg = 'asg[sched 1 {0, 0, 0, none, none}
  | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
  | scaling
     | registry
@@ -786,7 +786,7 @@ eq registry =
  ] .
 
     op example : -> VTA .
-    eq example = 'cloud[sdl(('asg : 'request : 'request : 'trash)) | asg | trash | request(2) | request(2)] .
+    eq example = 'cloud[sdl(('asg)) | asg | trash | request(2) | request(2)] .
 
 --- example with one request should create one vm1, have vm3 behind the guard and vm5 behind lock and guard.
 --- then a lot of internal movement stuff should happen, the request should move into vm3 and be opened
@@ -795,5 +795,7 @@ eq registry =
 
 endm
 
---- red names({!< 'd > ('a[sdl | 'd[sdl | 'b[sdl | zero] | open('c). zero]])}) .
---- rew[1] {example} .
+--- rew: ticks are given out randomly -> not all consumes reduce
+--- rew {example} .
+--- frew: ticks are given out more fairly -> all consumes reduce
+--- frew {example} .
