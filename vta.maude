@@ -427,16 +427,8 @@ mod VTA-SATISFACTION is
     eq [Exists] : P |= exists X . F = P |= allsubsExist(X, P, F) .
     eq [Consumption] : P |= Consume = consumptions(P) .
     eq [NotConsumption] : P |= NotConsume = not(consumptions(P)) .
-    eq [LessSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
-        |= #< S  = size(merge(SrvN, UnSrvN)) <= S .
-    eq [MoreSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
-        |= #> S  = size(merge(SrvN, UnSrvN)) > S .
     ceq [SpatialNext] : P |= (+) F = spatialnext(Ps, F)
       if  Ps := siblings(P) .
-    ceq [AnyOne] : P |= anyone(F) = anysat(Ps, F)
-        if  Ps := siblings(P) .
-    ceq [NoOne] : P |= none(F) = not(anysat(Ps, F))
-            if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
@@ -450,6 +442,22 @@ mod VTA-SATISFACTION is
           distance(P, Q, X) <= A /\
           contains(Q, X) /\
           Q |= F => true .
+
+    --- We define additional formulas as equational short-cuts for the modality
+    --- formulas which use backtracking and slow down the computation.
+
+    --- LessSubs and MoreSubs are short for Q |= <> 0 S N[True] and its negation.
+    eq [LessSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
+        |= #< S  = size(merge(SrvN, UnSrvN)) <= S .
+    eq [MoreSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
+        |= #> S  = size(merge(SrvN, UnSrvN)) > S .
+
+    --- AnyOne and NoOne are short for P |= F | True and its negation.
+    ceq [AnyOne] : P |= anyone(F) = anysat(Ps, F)
+        if  Ps := siblings(P) .
+    ceq [NoOne] : P |= none(F) = not(anysat(Ps, F))
+            if  Ps := siblings(P) .
+
 
     var Ps : Servables .
     vars R : Rat .
