@@ -693,75 +693,83 @@ mod AUTO-SCALING-EXAMPLE is
     eq allVMsAreFull = none(NotConsume /\ ((+) anyone('isVM[True]))) .
 
     op moveGuard_ : Name -> Formula .
-    eq moveGuard(X) = ((+) anyone('asg[ ( anyone('request[True])) /\ ( anyone(X[True] /\ NotConsume) )])).
+    eq moveGuard(X) =
+        ((+) anyone('asg[(anyone('request[True])) /\ (anyone(X[True] /\ NotConsume))])) .
 
     op restartGuard_ : Name -> Formula .
-    eq restartGuard(X) = ((+) anyone('asg[ ( anyone('request[True])) /\  (anyone(X[True] /\ Consume)) ])) .
+    eq restartGuard(X) =
+        ((+) anyone('asg[(anyone('request[True])) /\  (anyone(X[True] /\ Consume))])) .
 
     op deleteGuard_ : Name -> Formula .
-    eq deleteGuard(X) =  ((+) anyone('asg[ (none('request[True])) /\ (anyone(X[True] /\ NotConsume)) /\ (anyone('registry[True] /\ (#> MIN)))])) .
+    eq deleteGuard(X) =
+        ((+) anyone('asg[(none('request[True]))
+              /\ (anyone(X[True] /\ NotConsume))
+              /\ (anyone('registry[True] /\ (#> MIN)))])) .
 
-  op scalingGuard : -> Formula .
-  eq scalingGuard = ((+) anyone('asg[ (anyone('request[True])) /\
-                                ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ allVMsAreFull) /\
-                                (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
-
-op virtualMachine : Name -> VTA .
-eq virtualMachine(X) =  X[sched 1 {0, 0, 0, none, none}
-                                  | 'start[sdl | zero]
-                                  | 'scaling_lock[sdl | out(X) . zero]
-                                  | ! (open('request) . zero)
-                                  | ! (open('restart_local) . zero) | 'isVM[sdl | zero] | open('cleaner) . zero
-                                  | ! (open('start) . 'key[sdl | out(X) . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
-                                  | ! (open('private_lock)
-                                    . 'options[sdl('local_lock) |
-                                       (moveGuard(X)
-                                        ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
-                                       | (restartGuard(X)
-                                        ? (open('local_lock) . delete(X)))
-                                    | (deleteGuard(X)
-                                        ? (open('local_lock) . remove(X)))
-                                      | 'local_lock[sdl | zero]])] .
-
-
-op delete : Name -> VTA .
-eq delete(X) =
-    out(X) . out('asg) . in('trash)
-    . ('restart_global[sdl | out('options) . out('trash) . in('asg)
-        . ('global_lock[sdl | zero] | open('key) . zero)]
-      | 'restart_local[sdl | out('options) . out('trash) . in('asg) . in(X)
-        . ('local_lock[sdl | in('options) . zero]
-          | 'start[sdl | zero])]) .
-
-op moveTo : Name -> VTA .
-eq moveTo(X) =
-    'move[sdl | out('options) . out(X) . in('request)
-      . in(X) . 'delete_sig[sdl | in('options) . zero]] .
-
-op cleanUp : -> VTA .
-eq cleanUp =
-    ! ('cleaner[sdl | open('call_clean_up)
-      . open('deregistered) . out('asg)
-      . in('trash) . 'inTrash[sdl | zero]]) .
-
-op remove : Name -> VTA .
-eq remove(X) =
-    'call_clean_up[sdl | out('options) . out(X) . in('cleaner) . in(X)
-      . ('removal[sdl | out(X) . in('registry)
-          . open('counter) . 'deregistered[sdl | out('registry) . in(X) . zero]]
-        | open('inTrash) . 'restart_global[sdl | out(X) . out('trash) . in('asg)
-          . ('global_lock[sdl | zero] | open('key) . zero)])] .
+    op scalingGuard : -> Formula .
+    eq scalingGuard =
+        ((+) anyone('asg[(anyone('request[True])) /\
+              ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ allVMsAreFull) /\
+              (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
+    
+    op virtualMachine : Name -> VTA .
+    eq virtualMachine(X) =
+        X[sched 1 {0, 0, 0, none, none}
+          | 'start[sdl | zero]
+          | 'scaling_lock[sdl | out(X) . zero]
+          | ! (open('request) . zero)
+          | ! (open('restart_local) . zero) | 'isVM[sdl | zero] | open('cleaner) . zero
+          | ! (open('start) . 'key[sdl | out(X)
+              . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
+          | ! (open('private_lock)
+            . 'options[sdl('local_lock) |
+              (moveGuard(X)
+                ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
+              | (restartGuard(X)
+                ? (open('local_lock) . delete(X)))
+              | (deleteGuard(X)
+                ? (open('local_lock) . remove(X)))
+              | 'local_lock[sdl | zero]])] .
 
 
-op scaling : -> VTA .
-eq scaling =  !< 'vm : 'counter > (open('scaling_lock) .
-            (scalingGuard
-            ? ('counter[sched 1 {0, 0, 0, none, none}| in('registry) . 'registered[sdl | out('counter) . out('registry) . zero]] | (open('registered) . virtualMachine('vm))))) .
+    op delete : Name -> VTA .
+    eq delete(X) =
+        out(X) . out('asg) . in('trash)
+        . ('restart_global[sdl | out('options) . out('trash) . in('asg)
+            . ('global_lock[sdl | zero] | open('key) . zero)]
+          | 'restart_local[sdl | out('options) . out('trash) . in('asg) . in(X)
+            . ('local_lock[sdl | in('options) . zero]
+              | 'start[sdl | zero])]) .
 
-op registry : -> VTA .
-eq registry =
-      'registry[sdl
-      | ! (open('removal) . zero)] .
+    op moveTo : Name -> VTA .
+    eq moveTo(X) =
+        'move[sdl | out('options) . out(X) . in('request)
+          . in(X) . 'delete_sig[sdl | in('options) . zero]] .
+
+    op cleanUp : -> VTA .
+    eq cleanUp =
+        ! ('cleaner[sdl | open('call_clean_up)
+            . open('deregistered) . out('asg)
+            . in('trash) . 'inTrash[sdl | zero]]) .
+
+    op remove : Name -> VTA .
+    eq remove(X) =
+        'call_clean_up[sdl | out('options) . out(X) . in('cleaner) . in(X)
+          . ('removal[sdl | out(X) . in('registry)
+              . open('counter) . 'deregistered[sdl | out('registry) . in(X) . zero]]
+            | open('inTrash) . 'restart_global[sdl | out(X) . out('trash) . in('asg)
+              . ('global_lock[sdl | zero] | open('key) . zero)])] .
+
+
+    op scaling : -> VTA .
+    eq scaling =
+        !< 'vm : 'counter > (open('scaling_lock)
+          . (scalingGuard ? ('counter[sched 1 {0, 0, 0, none, none} | in('registry)
+                . 'registered[sdl | out('counter) . out('registry) . zero]]
+              | (open('registered) . virtualMachine('vm))))) .
+
+    op registry : -> VTA .
+    eq registry = 'registry[sdl | ! (open('removal) . zero)] .
 
     op consumes : Nat -> VTA .
     eq consumes(0) = zero .
@@ -774,24 +782,26 @@ eq registry =
     eq trash = 'trash[sdl | zero ] .
 
     op asg : -> VTA .
-    eq asg = 'asg[sched 1 {0, 0, 0, none, none}
- | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
- | scaling
-    | registry
-    | 'global_lock[sdl | zero]
-    |  (open('key) . zero)
-    |  ! (open('restart_global) . zero)
- | 'scaling_lock[ sdl | zero]
-    | cleanUp
- ] .
+    eq asg =
+        'asg[sched 1 {0, 0, 0, none, none}
+          | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
+          | scaling
+          | registry
+          | 'global_lock[sdl | zero]
+          |  (open('key) . zero)
+          |  ! (open('restart_global) . zero)
+          | 'scaling_lock[ sdl | zero]
+          | cleanUp] .
 
     op example : -> VTA .
     eq example = 'cloud[sdl(('asg)) | asg | trash | request(2) | request(2)] .
 
---- example with one request should create one vm1, have vm3 behind the guard and vm5 behind lock and guard.
---- then a lot of internal movement stuff should happen, the request should move into vm3 and be opened
---- vm3 should get ticks from asg and the consume capability should go away, thus resolving the request
---- for more requests the number of virtual machines sales according to MIN and MAX.
+--- example with one request should create one vm1, have vm3 behind the guard
+--- and vm5 behind lock and guard. then a lot of internal movement stuff should
+--- happen, the request should move into vm3 and be opened vm3 should get ticks
+--- from asg and the consume capability should go away, thus resolving the
+--- request for more requests the number of virtual machines sales according to
+--- MIN and MAX.
 
 endm
 
