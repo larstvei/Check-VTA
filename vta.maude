@@ -88,11 +88,13 @@ fmod VTA-OPS is
     op _._ : Capability VTA -> VTA [prec 80 frozen (2)] .
     op _[_|_] : Name Scheduler VTA -> VTA [prec 70 format (g++ o d ni d d --)] .
 
-    var Unserved : Servables .
+    var Unserved, Served : Servables .
     vars P Q : VTA .
     var Ca : Capability .
     var Sc : Scheduler .
     var N : Name .
+    var Speed : Rat .
+    vars In Out Rest : Nat .
 
     op names : VTA -> Servables .
     eq names(zero) = none .
@@ -103,7 +105,8 @@ fmod VTA-OPS is
 
     op barb : VTA -> Servables .
     eq barb(Ca . P | Q) = barb(Q) .
-    eq barb(N[Sc | P] | Q) = N : barb(Q) .
+    eq barb(N[sched Speed {In, Out, Rest, Unserved, Served} | P] | Q) =
+        barb(Q) : if Speed > 0 then N else none fi .
     ceq barb(P | Q) = barb(P) : barb(Q) if P =/= zero and Q =/= zero .
     eq barb(P) = none [owise] .
 
@@ -232,37 +235,17 @@ mod VTA-CALCULUS is
         K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : (c . P))} | R]
       if SpdK > 0 .
 
-    rl [none]:
-        K[sched SpdK {InK, 0, 0, none, none} | tick | R]
-      =>
-        K[sched SpdK {s(InK), 0, 0, none, none} | R] .
-
     crl [tick]:
         K[sched SpdK {InK, 0, 0, UnSrvK, SrvK} | tick | R]
       =>
         K[sched SpdK {s(InK), OutN, RestN, UnSrvK, SrvK} | R]
-      if  OutN RestN := speed(SpdK) /\ size(merge(UnSrvK, SrvK)) > 0 .
+      if  OutN RestN := speed(SpdK) .
 
-    crl [new-round-consumption] :
+    crl [new-round] :
         K[sched SpdK {InK, OutK, RestK, none, SrvK} | R]
       =>
         K[sched SpdK {InK, OutK, RestK, SrvK, none} | R]
-      if size(SrvK) > 0  /\ (c . P) := getConsume(SrvK) .
-
-    crl [new-round-ambient] :
-        K[sched SpdK {InK, OutK, RestK, none, (SrvK : N)}
-          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
-      =>
-        K[sched SpdK {InK, OutK, RestK, (SrvK : N), none}
-          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
-      if size(SrvK) > 0  /\ SpdN > 0 .
-
-    rl [zero-speed-ambients] :
-        K[sched SpdK {InK, OutK, RestK, (UnSrvK : N), SrvK}
-          | N[sched 0 {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
-      =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : N)}
-          | N[sched 0 {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R] .
+      if size(SrvK) > 0 .
 
     crl [primary-tock-consume] :
         K[sched SpdK {InK, s(OutK), RestK, UnSrvK, SrvK} | R]
@@ -271,13 +254,12 @@ mod VTA-CALCULUS is
       if  (c . P) := getConsume(UnSrvK) /\
           UnSrvN := merge(barb(P), remove(UnSrvK, (c . P))) .
 
-    crl [primary-tock-ambient] :
+    rl [primary-tock-ambient] :
         K[sched SpdK {InK, s(OutK), RestK, (UnSrvK : N), SrvK}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | Q] | R]
       =>
         K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : N)}
-          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R]
-        if SpdN > 0 .
+          | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R] .
 
     crl [secondary-tock-consume1] :
         K[sched SpdK {InK, OutK, s(RestK), UnSrvK, SrvK} | R]
@@ -293,7 +275,7 @@ mod VTA-CALCULUS is
       =>
         K[sched SpdK {InK, OutK, RestK, UnSrvK, (SrvK : N)}
           | N[sched SpdN {InN, OutN, RestN, SrvN, UnSrvN} | tick | Q] | R]
-      if InK rem getFraction(s(RestK), SpdK) == 0 /\ SpdN > 0 .
+      if InK rem getFraction(s(RestK), SpdK) == 0 .
 
     crl [secondary-tock-no-action] :
         K[sched SpdK {InK, OutK, s(RestK), UnSrvK, SrvK} | P]
