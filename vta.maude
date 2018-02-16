@@ -165,7 +165,7 @@ mod VTA-CALCULUS is
     vars Sc Sc1 Sc2 Sc3 : Scheduler .
     var Ca : Capability .
     vars P Q R U : VTA .
-    vars Served Unserved : Servables .
+    vars Served Unserved NewParent : Servables .
     vars SrvN SrvM UnSrvK UnSrvN UnSrvM SrvK : Servables .
 
     --- In the example we allow non-unique naming, leading to multisets in the
@@ -173,6 +173,7 @@ mod VTA-CALCULUS is
 
     op makeUnserved : Name Servables Servables -> Servables .
     op makeServed : Name Servables Servables -> Servables .
+    op makeParent : Name Servables Servables Servables -> Servables .
 
     ceq makeUnserved(N, Unserved, Served) = Unserved
       if N element Served or not(N element merge(Unserved, Served)) .
@@ -180,6 +181,10 @@ mod VTA-CALCULUS is
 
     ceq makeServed(N, Unserved, Served) = remove(Served, N) if N element Served .
     eq makeServed(N, Unserved, Served) = Served [owise] .
+
+    ceq makeParent(N, Unserved, Served, NewParent) =  N : NewParent
+      if N element merge(Unserved, Served) .
+    eq makeParent(N, Unserved, Served, NewParent) =  NewParent [owise] .
 
     crl [open] :
         M[sched Speed {InM, OutM, RestM, Unserved, Served}
@@ -195,11 +200,12 @@ mod VTA-CALCULUS is
           | M[sched SpdM {InM, OutM, RestM, SrvM, UnSrvM} | R] | U]
       =>
         K[sched SpdK {InK, OutK, RestK, Unserved, Served}
-          | M[sched SpdM {InM, OutM, RestM, SrvM, merge(UnSrvM, N)} | R
+          | M[sched SpdM {InM, OutM, RestM, SrvM, NewParent} | R
             | N[sched SpdN {InN, OutN, RestN, SrvN, merge(UnSrvN, barb(P))}
               | P | Q]] | U]
-      if  Unserved := makeUnserved(N, UnSrvK, SrvK) /\
-          Served   := makeServed(N, UnSrvK, SrvK) .
+      if  Unserved  := makeUnserved(N, UnSrvK, SrvK) /\
+          Served    := makeServed(N, UnSrvK, SrvK) /\
+          NewParent := makeParent(N, UnSrvK, SrvK, UnSrvM) .
 
     crl [out] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK}
@@ -207,11 +213,12 @@ mod VTA-CALCULUS is
             | N[sched SpdN {InN, OutN, RestN, UnSrvN, SrvN}
               | out(M) . P | Q]] | U]
       =>
-        K[sched SpdK {InK, OutK, RestK, UnSrvK, merge(SrvK, N)}
+        K[sched SpdK {InK, OutK, RestK, UnSrvK, NewParent}
           | N[sched SpdN {InN, OutN, RestN, UnSrvN, merge(SrvN, barb(P))} | P | Q]
           | M[sched SpdM {InM, OutM, RestM, Unserved, Served} | R] | U]
-      if  Unserved := makeUnserved(N, UnSrvM, SrvM) /\
-          Served   := makeServed(N, UnSrvM, SrvM) .
+      if  Unserved  := makeUnserved(N, UnSrvM, SrvM) /\
+          Served    := makeServed(N, UnSrvM, SrvM) /\
+          NewParent := makeParent(N, UnSrvM, SrvM, SrvK) .
 
     crl [consumption] :
         K[sched SpdK {InK, OutK, RestK, UnSrvK, SrvK} | c . P | R]
@@ -711,7 +718,7 @@ mod AUTO-SCALING-EXAMPLE is
         ((+) anyone('asg[(anyone('request[True])) /\
               ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ allVMsAreFull) /\
               (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
-    
+
     op virtualMachine : Name -> VTA .
     eq virtualMachine(X) =
         X[sched 1 {0, 0, 0, none, none}
@@ -750,26 +757,29 @@ mod AUTO-SCALING-EXAMPLE is
     eq cleanUp =
         ! ('cleaner[sdl | open('call_clean_up)
             . open('deregistered) . out('asg)
-            . in('garbage) . 'inGarbage[sdl | zero]]) .
+            . in('garbage) . 'garbageCollected[sdl | zero]]) .
 
     op remove : Name -> VTA .
     eq remove(X) =
         'call_clean_up[sdl | out('options) . out(X) . in('cleaner) . in(X)
           . ('removal[sdl | out(X) . in('registry)
               . open('counter) . 'deregistered[sdl | out('registry) . in(X) . zero]]
-            | open('inGarbage) . 'restart_global[sdl | out(X) . out('garbage) . in('asg)
+            | open('garbageCollected) . 'restart_global[sdl | out(X) . out('garbage) . in('asg)
               . ('global_lock[sdl | zero] | open('key) . zero)])] .
 
 
     op scaling : -> VTA .
     eq scaling =
         !< 'vm : 'counter > (open('scaling_lock)
-          . (scalingGuard ? ('counter[sched 1 {0, 0, 0, none, none} | in('registry)
-                . 'registered[sdl | out('counter) . out('registry) . zero]]
+          . (scalingGuard ? ( transferbox
               | (open('registered) . virtualMachine('vm))))) .
 
+    op transferbox : -> VTA .
+    eq transferbox =   'transferbox[ sdl | in('registry) . ('counter[sched 1 {0, 0, 0, none, none} | zero ]
+           | 'registered[sdl | out('registry) . zero])] .
+
     op registry : -> VTA .
-    eq registry = 'registry[sdl | ! (open('removal) . zero)] .
+    eq registry = 'registry[sdl | ! (open('removal) . zero) | ! (open('transferbox) . zero)] .
 
     op consumes : Nat -> VTA .
     eq consumes(0) = zero .
@@ -808,4 +818,4 @@ endm
 --- rew: ticks are given out randomly -> not all consumes reduce
 --- rew {example} .
 --- frew: ticks are given out more fairly -> all consumes reduce
-frew {example} .
+--- frew[55] {example} .
