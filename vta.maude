@@ -734,10 +734,10 @@ mod AUTO-SCALING-EXAMPLE is
 
     op delete : Name -> VTA .
     eq delete(X) =
-        out(X) . out('asg) . in('trash)
-        . ('restart_global[sdl | out('options) . out('trash) . in('asg)
+        out(X) . out('asg) . in('garbage)
+        . ('restart_global[sdl | out('options) . out('garbage) . in('asg)
             . ('global_lock[sdl | zero] | open('key) . zero)]
-          | 'restart_local[sdl | out('options) . out('trash) . in('asg) . in(X)
+          | 'restart_local[sdl | out('options) . out('garbage) . in('asg) . in(X)
             . ('local_lock[sdl | in('options) . zero]
               | 'start[sdl | zero])]) .
 
@@ -750,14 +750,14 @@ mod AUTO-SCALING-EXAMPLE is
     eq cleanUp =
         ! ('cleaner[sdl | open('call_clean_up)
             . open('deregistered) . out('asg)
-            . in('trash) . 'inTrash[sdl | zero]]) .
+            . in('garbage) . 'inGarbage[sdl | zero]]) .
 
     op remove : Name -> VTA .
     eq remove(X) =
         'call_clean_up[sdl | out('options) . out(X) . in('cleaner) . in(X)
           . ('removal[sdl | out(X) . in('registry)
               . open('counter) . 'deregistered[sdl | out('registry) . in(X) . zero]]
-            | open('inTrash) . 'restart_global[sdl | out(X) . out('trash) . in('asg)
+            | open('inGarbage) . 'restart_global[sdl | out(X) . out('garbage) . in('asg)
               . ('global_lock[sdl | zero] | open('key) . zero)])] .
 
 
@@ -778,8 +778,8 @@ mod AUTO-SCALING-EXAMPLE is
     op request : Nat -> VTA .
     eq request(K) = 'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
 
-    op trash : -> VTA .
-    eq trash = 'trash[sdl | zero ] .
+    op garbage : -> VTA .
+    eq garbage = 'garbage[sdl | zero ] .
 
     op asg : -> VTA .
     eq asg =
@@ -794,7 +794,7 @@ mod AUTO-SCALING-EXAMPLE is
           | cleanUp] .
 
     op example : -> VTA .
-    eq example = 'cloud[sdl(('asg)) | asg | trash | request(2) | request(2)] .
+    eq example = 'cloud[sdl(('asg)) | asg | garbage | request(2) | request(2)] .
 
 --- example with one request should create one vm1, have vm3 behind the guard
 --- and vm5 behind lock and guard. then a lot of internal movement stuff should
@@ -808,4 +808,4 @@ endm
 --- rew: ticks are given out randomly -> not all consumes reduce
 --- rew {example} .
 --- frew: ticks are given out more fairly -> all consumes reduce
---- frew {example} .
+frew {example} .
