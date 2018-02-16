@@ -46,7 +46,6 @@ fmod VTA-SORTS is
 
     op size1 : Servables Nat -> Nat .
     eq size1(none, C) = C .
-    eq size1((N : N : S), C) = size1((N : S), C) .
     eq size1((E : S), C) = size1(S, C + 1) [owise] .
 
     op merge : Servables Servables -> Servables .
@@ -770,13 +769,15 @@ mod AUTO-SCALING-EXAMPLE is
 
     op scaling : -> VTA .
     eq scaling =
-        !< 'vm : 'counter > (open('scaling_lock)
+        !< 'vm > (open('scaling_lock)
           . (scalingGuard ? ( transferbox
               | (open('registered) . virtualMachine('vm))))) .
 
     op transferbox : -> VTA .
-    eq transferbox =   'transferbox[ sdl | in('registry) . ('counter[sched 1 {0, 0, 0, none, none} | zero ]
-           | 'registered[sdl | out('registry) . zero])] .
+    eq transferbox =
+        'transferbox[sdl | in('registry)
+          . ('counter[sched 1 {0, 0, 0, none, none} | zero ]
+            | 'registered[sdl | out('registry) . zero])] .
 
     op registry : -> VTA .
     eq registry = 'registry[sdl | ! (open('removal) . zero) | ! (open('transferbox) . zero)] .
@@ -804,7 +805,8 @@ mod AUTO-SCALING-EXAMPLE is
           | cleanUp] .
 
     op example : -> VTA .
-    eq example = 'cloud[sdl(('asg)) | asg | garbage | request(2) | request(2)] .
+    eq example =
+        {'cloud[sdl(('asg)) | asg | garbage | request(2) | request(2)]} .
 
 --- example with one request should create one vm1, have vm3 behind the guard
 --- and vm5 behind lock and guard. then a lot of internal movement stuff should
@@ -816,6 +818,6 @@ mod AUTO-SCALING-EXAMPLE is
 endm
 
 --- rew: ticks are given out randomly -> not all consumes reduce
---- rew {example} .
+--- rew example .
 --- frew: ticks are given out more fairly -> all consumes reduce
---- frew[55] {example} .
+frew example .
