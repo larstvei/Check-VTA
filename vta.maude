@@ -284,7 +284,6 @@ mod VTA-FORMULA is
     ops True False : -> Formula [ctor format (r o)] .
     op Consume : -> Formula [ctor format (r o)] .
     op NotConsume : -> Formula [ctor format (r o)] .
-    op ~_ : Formula -> Formula [ctor prec 53 format (r d o)] .
     op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (r d d o)] .
     op _\/_ : Formula Formula -> Formula [comm ctor gather (E e) prec 59 format (r d d o)] .
     op void : -> Formula [ctor format (r o)] .
@@ -297,6 +296,7 @@ mod VTA-FORMULA is
     op none : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53 format (r d d d d o)] .
     op <>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
+    op <~>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
     op #<_ : Nat -> Formula [prec 53 format (r d o)] .
     op #>_ : Nat -> Formula [prec 53 format (r d o)] .
     op _@_ : Formula Name -> Formula [format (r d d o)] .
@@ -310,7 +310,6 @@ mod VTA-FORMULA is
     op [_<-_] : Name Name -> Substitution .
 
     op __ : Formula Substitution -> Formula [prec 20] .
-    eq (~ F)[X <- N] = ~ (F[X <- N]) .
     eq M[F][X <- N] = (if (M == X) then N else M fi)[F[X <- N]] .
     eq (<> A @ M F)[X <- N] = <> A @ (if (M == X) then N else M fi) F[X <- N] .
     eq (F @ M)[X <- N] = F[X <- N] @ (if (M == X) then N else M fi) .
@@ -319,6 +318,7 @@ mod VTA-FORMULA is
     eq (all Y . F)[X <- N] = all Y . F[X <- N] .
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
+    eq (<~> R A F)[X <- N] = <~> R A F[X <- N] .
     eq (anyone(F))[X <- N] = anyone(F[X <- N]) .
     eq (none(F))[X <- N] = none(F[X <- N]) .
     eq ((+) F)[X <- N] = (+) (F[X <- N]) .
@@ -424,7 +424,6 @@ mod VTA-SATISFACTION is
 
     eq [True] : P |= True = true .
     eq [False] : P |= False = false .
-    eq [Negation] : P |= ~ F = not (P |= F) .
     eq [Conjunction] : P |= F /\ G = (P |= F) and (P |= G) .
     eq [Disjunction] : P |= F \/ G = (P |= F) or (P |= G) .
     eq [Void] : zero |= void = true .
@@ -437,10 +436,15 @@ mod VTA-SATISFACTION is
       if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
+    ceq [NotSomewhere] : P |= <~> Speed S F = not(somewhere(Ps, Speed, S, F))
+      if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
 
     crl [Parallel] : P | Q |= F | G => true
       if P |= F => true /\ Q |= G => true .
+
+    --- crl [NotParallel] : P | Q |= F -|- G => true
+    ---   if P |= F => true /\ Q |= G => true .
 
     crl [Sometime] : P |= <> A @ X F => true
       if  contains(P, X) /\
@@ -571,7 +575,6 @@ mod RESOURCE-AWARE is
     eq removeNumbers(False) = False .
     eq removeNumbers(Consume) = Consume .
     eq removeNumbers(NotConsume) = NotConsume .
-    eq removeNumbers(~ F) = ~ removeNumbers(F) .
     eq removeNumbers(M[F]) = removeNumber(M)[removeNumbers(F)] .
     eq removeNumbers(<> I @ M F) = <> I @ removeNumber(M) removeNumbers(F) .
     eq removeNumbers(F @ M) = removeNumbers(F) @ removeNumber(M) .
@@ -581,6 +584,7 @@ mod RESOURCE-AWARE is
     eq removeNumbers(all Y . F) = all Y . removeNumbers(F) .
     eq removeNumbers(exists Y . F) = exists Y . removeNumbers(F) .
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
+    eq removeNumbers(<~> O I F) = <~> O I removeNumbers(F) .
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
     eq removeNumbers(anyone(F)) = anyone(removeNumbers(F)) .
     eq removeNumbers(none(F)) = none(removeNumbers(F)) .
@@ -610,7 +614,6 @@ mod RESOURCE-AWARE is
     eq substitute1(N, False) = False .
     eq substitute1(N, Consume) = Consume .
     eq substitute1(N, NotConsume) = NotConsume .
-    eq substitute1(N, (~ F)) = ~ (substitute1(N, F)) .
     eq substitute1(N, M[F]) = (if (removeNumber(N) == M) then N else M fi)[substitute1(N, F)] .
     eq substitute1(N, <> I @ M F) = <> I @ (if (removeNumber(N) == M) then N else M fi) substitute1(N, F) .
     eq substitute1(N, F @ M) = substitute1(N, F) @ (if (removeNumber(N) == M) then N else M fi) .
@@ -620,6 +623,7 @@ mod RESOURCE-AWARE is
     eq substitute1(N, all Y . F) = all Y . substitute1(N, F) .
     eq substitute1(N, exists Y . F) = exists Y . substitute1(N, F) .
     eq substitute1(N, <> O I F) = <> O I substitute1(N, F) .
+    eq substitute1(N, <~> O I F) = <~> O I substitute1(N, F) .
     eq substitute1(N, (+) F) = (+) substitute1(N, F) .
     eq substitute1(N, anyone(F)) = anyone(substitute1(N, F)) .
     eq substitute1(N, none(F)) = none(substitute1(N, F)) .
@@ -690,36 +694,41 @@ mod AUTO-SCALING-EXAMPLE is
 
     vars K : Nat .
     vars X Y : Name .
-
-    ops MIN MAX : -> Nat .
-    eq MIN = 1 .
-    eq MAX = 4 .
+    vars MIN MAX : Nat .
 
     op allVMsAreFull : -> Formula .
     eq allVMsAreFull = none(NotConsume /\ ((+) anyone('isVM[True]))) .
 
-    op moveGuard_ : Name -> Formula .
+    op moveGuard : Name -> Formula .
     eq moveGuard(X) =
         ((+) anyone('asg[(anyone('request[True])) /\ (anyone(X[True] /\ NotConsume))])) .
 
-    op restartGuard_ : Name -> Formula .
+    op restartGuard : Name -> Formula .
     eq restartGuard(X) =
         ((+) anyone('asg[(anyone('request[True])) /\  (anyone(X[True] /\ Consume))])) .
 
-    op deleteGuard_ : Name -> Formula .
-    eq deleteGuard(X) =
+    op deleteGuard : Name Nat Nat -> Formula .
+    eq deleteGuard(X, MIN, MAX) =
         ((+) anyone('asg[(none('request[True]))
               /\ (anyone(X[True] /\ NotConsume))
               /\ (anyone('registry[True] /\ (#> MIN)))])) .
 
-    op scalingGuard : -> Formula .
-    eq scalingGuard =
+    op scalingGuard : Nat Nat -> Formula .
+
+    eq scalingGuard(MIN, MAX) =
         ((+) anyone('asg[(anyone('request[True])) /\
               ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ allVMsAreFull) /\
               (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
 
-    op virtualMachine : Name -> VTA .
-    eq virtualMachine(X) =
+    ***(
+     eq scalingGuard(MIN, MAX) =
+         (+) ('asg[(<> 0 sd(MIN,1) 'registry[True]) \/
+             (('request[True]| True) /\ (<> 0 sd(MAX,1) 'registry[True]) /\
+               (<~> 0 100 (NotConsume /\ (+) ('isVM[True] | True))))] | True ) .
+  )
+
+    op virtualMachine :  Name Nat Nat -> VTA .
+    eq virtualMachine(X, MIN, MAX) =
         X[sched 1 {0, 0, 0, none, none}
           | 'start[sdl | zero]
           | 'scaling_lock[sdl | out(X) . zero]
@@ -733,7 +742,7 @@ mod AUTO-SCALING-EXAMPLE is
                 ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
               | (restartGuard(X)
                 ? (open('local_lock) . delete(X)))
-              | (deleteGuard(X)
+              | (deleteGuard(X, MIN, MAX)
                 ? (open('local_lock) . remove(X)))
               | 'local_lock[sdl | zero]])] .
 
@@ -767,11 +776,11 @@ mod AUTO-SCALING-EXAMPLE is
               . ('global_lock[sdl | zero] | open('key) . zero)])] .
 
 
-    op scaling : -> VTA .
-    eq scaling =
+    op scaling : Nat Nat -> VTA .
+    eq scaling(MIN, MAX) =
         !< 'vm > (open('scaling_lock)
-          . (scalingGuard ? ( transferbox
-              | (open('registered) . virtualMachine('vm))))) .
+          . (scalingGuard(MIN, MAX) ? ( transferbox
+              | (open('registered) . virtualMachine('vm, MIN, MAX))))) .
 
     op transferbox : -> VTA .
     eq transferbox =
@@ -792,11 +801,11 @@ mod AUTO-SCALING-EXAMPLE is
     op garbage : -> VTA .
     eq garbage = 'garbage[sdl | zero ] .
 
-    op asg : -> VTA .
-    eq asg =
+    op asg : Nat Nat -> VTA .
+    eq asg(MIN, MAX) =
         'asg[sched 1 {0, 0, 0, none, none}
           | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
-          | scaling
+          | scaling(MIN, MAX)
           | registry
           | 'global_lock[sdl | zero]
           |  (open('key) . zero)
@@ -806,7 +815,7 @@ mod AUTO-SCALING-EXAMPLE is
 
     op example : -> VTA .
     eq example =
-        {'cloud[sdl(('asg)) | asg | garbage | request(2) | request(2)]} .
+        { 'cloud[sdl(('asg)) | asg(1, 4) | request(2) | request(2) | garbage] } .
 
 --- example with one request should create one vm1, have vm3 behind the guard
 --- and vm5 behind lock and guard. then a lot of internal movement stuff should
