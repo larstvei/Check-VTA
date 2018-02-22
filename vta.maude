@@ -714,18 +714,10 @@ mod AUTO-SCALING-EXAMPLE is
               /\ (anyone('registry[True] /\ (#> MIN)))])) .
 
     op scalingGuard : Nat Nat -> Formula .
-
     eq scalingGuard(MIN, MAX) =
-        ((+) anyone('asg[(anyone('request[True])) /\
-              ((anyone('registry[True] /\ (#< sd(MIN,1)))) \/ allVMsAreFull) /\
-              (anyone('registry[True] /\ (#< sd(MAX,1))))])) .
-
-    ***(
-     eq scalingGuard(MIN, MAX) =
-         (+) ('asg[(<> 0 sd(MIN,1) 'registry[True]) \/
-             (('request[True]| True) /\ (<> 0 sd(MAX,1) 'registry[True]) /\
-               (<~> 0 100 (NotConsume /\ (+) ('isVM[True] | True))))] | True ) .
-  )
+        (+) anyone('asg[<> 0 sd(MIN,1) anyone('isRegistry[True]) \/
+            anyone('request[True]) /\ none(NotConsume /\ (+) anyone('isVM[True])) /\
+            <> 0 sd(MAX,1) anyone('isRegistry[True])]) .
 
     op virtualMachine :  Name Nat Nat -> VTA .
     eq virtualMachine(X, MIN, MAX) =
@@ -789,7 +781,8 @@ mod AUTO-SCALING-EXAMPLE is
             | 'registered[sdl | out('registry) . zero])] .
 
     op registry : -> VTA .
-    eq registry = 'registry[sdl | ! (open('removal) . zero) | ! (open('transferbox) . zero)] .
+    eq registry = 'registry[sdl | ! (open('removal) . zero)
+          | ! (open('transferbox) . zero) | 'isRegistry[sdl | zero]] .
 
     op consumes : Nat -> VTA .
     eq consumes(0) = zero .
