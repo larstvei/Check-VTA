@@ -26,7 +26,7 @@ Maude>
 
 The Maude prompt accepts [Maude
 commands](http://maude.cs.uiuc.edu/maude2-manual/html/maude-manualch18.html),
-of which the perhaps most useful is `frew`. A case study is provided in [auto-scaling-case-study.maude]([auto-scaling-case-study.maude]) which can be invoked with the following:
+of which the perhaps most useful is `frew`. A case study is provided in [auto-scaling-case-study.maude](./auto-scaling-case-study.maude) which can be invoked with the following:
 
 ```
 Maude> load auto-scaling-case-study.maude .
