@@ -716,8 +716,9 @@ mod AUTO-SCALING-EXAMPLE is
     op scalingGuard : Nat Nat -> Formula .
     eq scalingGuard(MIN, MAX) =
         (+) someone('asg[<> 0 sd(MIN,1) someone('isRegistry[True]) \/
-            someone('request[True]) /\ no-one(NotConsume /\ (+) someone('isVM[True])) /\
-            <> 0 sd(MAX,1) someone('isRegistry[True])]) .
+                         someone('request[True]) /\
+                         <> 0 sd(MAX,1) someone('isRegistry[True]) /\
+                         no-one(NotConsume /\ (+) someone('isVM[True]))]) .
 
     op virtualMachine :  Name Nat Nat -> VTA .
     eq virtualMachine(X, MIN, MAX) =
@@ -789,7 +790,8 @@ mod AUTO-SCALING-EXAMPLE is
     eq consumes(s K) = c . consumes(K) .
 
     op request : Nat -> VTA .
-    eq request(K) = 'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
+    eq request(K) =
+        'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
 
     op garbage : -> VTA .
     eq garbage = 'garbage[sdl | zero ] .
