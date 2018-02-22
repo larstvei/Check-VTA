@@ -292,8 +292,8 @@ mod VTA-FORMULA is
     op all_._ : Name Formula -> Formula [format (r d d d o)] .
     op exists_._ : Name Formula -> Formula [format (r d d d o)] .
     op (+)_ : Formula -> Formula [format (r d d d o)] .
-    op anyone : Formula -> Formula .
-    op none : Formula -> Formula .
+    op someone : Formula -> Formula .
+    op no-one : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53 format (r d d d d o)] .
     op <>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
     op <~>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
@@ -319,8 +319,8 @@ mod VTA-FORMULA is
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
     eq (<~> R A F)[X <- N] = <~> R A F[X <- N] .
-    eq (anyone(F))[X <- N] = anyone(F[X <- N]) .
-    eq (none(F))[X <- N] = none(F[X <- N]) .
+    eq (someone(F))[X <- N] = someone(F[X <- N]) .
+    eq (no-one(F))[X <- N] = no-one(F[X <- N]) .
     eq ((+) F)[X <- N] = (+) (F[X <- N]) .
     eq F[N <- X] = F [owise] .
 
@@ -463,9 +463,9 @@ mod VTA-SATISFACTION is
         |= #> S  = size(merge(SrvN, UnSrvN)) > S .
 
     --- AnyOne and NoOne are short for P |= F | True and its negation.
-    ceq [AnyOne] : P |= anyone(F) = anysat(Ps, F)
+    ceq [AnyOne] : P |= someone(F) = anysat(Ps, F)
         if  Ps := siblings(P) .
-    ceq [NoOne] : P |= none(F) = not(anysat(Ps, F))
+    ceq [NoOne] : P |= no-one(F) = not(anysat(Ps, F))
             if  Ps := siblings(P) .
 
 
@@ -586,8 +586,8 @@ mod RESOURCE-AWARE is
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
     eq removeNumbers(<~> O I F) = <~> O I removeNumbers(F) .
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
-    eq removeNumbers(anyone(F)) = anyone(removeNumbers(F)) .
-    eq removeNumbers(none(F)) = none(removeNumbers(F)) .
+    eq removeNumbers(someone(F)) = someone(removeNumbers(F)) .
+    eq removeNumbers(no-one(F)) = no-one(removeNumbers(F)) .
     eq removeNumbers(#< I) = #< I .
     eq removeNumbers(#> I) = #> I .
 
@@ -625,8 +625,8 @@ mod RESOURCE-AWARE is
     eq substitute1(N, <> O I F) = <> O I substitute1(N, F) .
     eq substitute1(N, <~> O I F) = <~> O I substitute1(N, F) .
     eq substitute1(N, (+) F) = (+) substitute1(N, F) .
-    eq substitute1(N, anyone(F)) = anyone(substitute1(N, F)) .
-    eq substitute1(N, none(F)) = none(substitute1(N, F)) .
+    eq substitute1(N, someone(F)) = someone(substitute1(N, F)) .
+    eq substitute1(N, no-one(F)) = no-one(substitute1(N, F)) .
     eq substitute1(N, #< I) = #< I .
     eq substitute1(N, #> I) = #> I .
 
@@ -697,27 +697,27 @@ mod AUTO-SCALING-EXAMPLE is
     vars MIN MAX : Nat .
 
     op allVMsAreFull : -> Formula .
-    eq allVMsAreFull = none(NotConsume /\ ((+) anyone('isVM[True]))) .
+    eq allVMsAreFull = no-one(NotConsume /\ ((+) someone('isVM[True]))) .
 
     op moveGuard : Name -> Formula .
     eq moveGuard(X) =
-        ((+) anyone('asg[(anyone('request[True])) /\ (anyone(X[True] /\ NotConsume))])) .
+        ((+) someone('asg[(someone('request[True])) /\ (someone(X[True] /\ NotConsume))])) .
 
     op restartGuard : Name -> Formula .
     eq restartGuard(X) =
-        ((+) anyone('asg[(anyone('request[True])) /\  (anyone(X[True] /\ Consume))])) .
+        ((+) someone('asg[(someone('request[True])) /\  (someone(X[True] /\ Consume))])) .
 
     op deleteGuard : Name Nat Nat -> Formula .
     eq deleteGuard(X, MIN, MAX) =
-        ((+) anyone('asg[(none('request[True]))
-              /\ (anyone(X[True] /\ NotConsume))
-              /\ (anyone('registry[True] /\ (#> MIN)))])) .
+        ((+) someone('asg[(no-one('request[True]))
+              /\ (someone(X[True] /\ NotConsume))
+              /\ (someone('registry[True] /\ (#> MIN)))])) .
 
     op scalingGuard : Nat Nat -> Formula .
     eq scalingGuard(MIN, MAX) =
-        (+) anyone('asg[<> 0 sd(MIN,1) anyone('isRegistry[True]) \/
-            anyone('request[True]) /\ none(NotConsume /\ (+) anyone('isVM[True])) /\
-            <> 0 sd(MAX,1) anyone('isRegistry[True])]) .
+        (+) someone('asg[<> 0 sd(MIN,1) someone('isRegistry[True]) \/
+            someone('request[True]) /\ no-one(NotConsume /\ (+) someone('isVM[True])) /\
+            <> 0 sd(MAX,1) someone('isRegistry[True])]) .
 
     op virtualMachine :  Name Nat Nat -> VTA .
     eq virtualMachine(X, MIN, MAX) =
