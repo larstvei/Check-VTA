@@ -1,0 +1,130 @@
+mod AUTO-SCALING-EXAMPLE is
+    pr RESOURCE-AWARE .
+
+    vars K : Nat .
+    vars X Y : Name .
+    vars MIN MAX : Nat .
+
+    op allVMsAreFull : -> Formula .
+    eq allVMsAreFull = no-one(NotConsume /\ ((+) someone('isVM[True]))) .
+
+    op moveGuard : Name -> Formula .
+    eq moveGuard(X) =
+        ((+) someone('asg[(someone('request[True])) /\ (someone(X[True] /\ NotConsume))])) .
+
+    op restartGuard : Name -> Formula .
+    eq restartGuard(X) =
+        ((+) someone('asg[(someone('request[True])) /\  (someone(X[True] /\ Consume))])) .
+
+    op deleteGuard : Name Nat Nat -> Formula .
+    eq deleteGuard(X, MIN, MAX) =
+        ((+) someone('asg[(no-one('request[True]))
+              /\ (someone(X[True] /\ NotConsume))
+              /\ (someone('registry[True] /\ (#> MIN)))])) .
+
+    op scalingGuard : Nat Nat -> Formula .
+    eq scalingGuard(MIN, MAX) =
+        (+) someone('asg[<> 0 sd(MIN,1) someone('isRegistry[True]) \/
+                         someone('request[True]) /\
+                         <> 0 sd(MAX,1) someone('isRegistry[True]) /\
+                         no-one(NotConsume /\ (+) someone('isVM[True]))]) .
+
+    op virtualMachine :  Name Nat Nat -> VTA .
+    eq virtualMachine(X, MIN, MAX) =
+        X[sched 1 {0, 0, 0, none, none}
+          | 'start[sdl | zero]
+          | 'scaling_lock[sdl | out(X) . zero]
+          | ! (open('request) . zero)
+          | ! (open('restart_local) . zero) | 'isVM[sdl | zero] | open('cleaner) . zero
+          | ! (open('start) . 'key[sdl | out(X)
+              . open('global_lock) . 'private_lock[sdl | in(X) . zero]])
+          | ! (open('private_lock)
+            . 'options[sdl('local_lock) |
+              (moveGuard(X)
+                ? (open('local_lock) . (moveTo(X) | open('delete_sig) . delete(X))))
+              | (restartGuard(X)
+                ? (open('local_lock) . delete(X)))
+              | (deleteGuard(X, MIN, MAX)
+                ? (open('local_lock) . remove(X)))
+              | 'local_lock[sdl | zero]])] .
+
+
+    op delete : Name -> VTA .
+    eq delete(X) =
+        out(X) . out('asg) . in('garbage)
+        . ('restart_global[sdl | out('options) . out('garbage) . in('asg)
+            . ('global_lock[sdl | zero] | open('key) . zero)]
+          | 'restart_local[sdl | out('options) . out('garbage) . in('asg) . in(X)
+            . ('local_lock[sdl | in('options) . zero]
+              | 'start[sdl | zero])]) .
+
+    op moveTo : Name -> VTA .
+    eq moveTo(X) =
+        'move[sdl | out('options) . out(X) . in('request)
+          . in(X) . 'delete_sig[sdl | in('options) . zero]] .
+
+    op cleanUp : -> VTA .
+    eq cleanUp =
+        ! ('cleaner[sdl | open('call_clean_up)
+            . open('deregistered) . out('asg)
+            . in('garbage) . 'garbageCollected[sdl | zero]]) .
+
+    op remove : Name -> VTA .
+    eq remove(X) =
+        'call_clean_up[sdl | out('options) . out(X) . in('cleaner) . in(X)
+          . ('removal[sdl | out(X) . in('registry)
+              . open('counter) . 'deregistered[sdl | out('registry) . in(X) . zero]]
+            | open('garbageCollected) . 'restart_global[sdl | out(X) . out('garbage) . in('asg)
+              . ('global_lock[sdl | zero] | open('key) . zero)])] .
+
+
+    op scaling : Nat Nat -> VTA .
+    eq scaling(MIN, MAX) =
+        !< 'vm > (open('scaling_lock)
+          . (scalingGuard(MIN, MAX) ? ( transferbox
+              | (open('registered) . virtualMachine('vm, MIN, MAX))))) .
+
+    op transferbox : -> VTA .
+    eq transferbox =
+        'transferbox[sdl | in('registry)
+          . ('counter[sched 1 {0, 0, 0, none, none} | zero ]
+            | 'registered[sdl | out('registry) . zero])] .
+
+    op registry : -> VTA .
+    eq registry = 'registry[sdl | ! (open('removal) . zero)
+          | ! (open('transferbox) . zero) | 'isRegistry[sdl | zero]] .
+
+    op consumes : Nat -> VTA .
+    eq consumes(0) = zero .
+    eq consumes(s K) = c . consumes(K) .
+
+    op request : Nat -> VTA .
+    eq request(K) =
+        'request[sdl | in('asg) . open('move) . zero | consumes(K)] .
+
+    op garbage : -> VTA .
+    eq garbage = 'garbage[sdl | zero ] .
+
+    op asg : Nat Nat -> VTA .
+    eq asg(MIN, MAX) =
+        'asg[sched 1 {0, 0, 0, none, none}
+          | tick | tick | tick | tick | tick | tick | tick | tick | tick | tick
+          | scaling(MIN, MAX)
+          | registry
+          | 'global_lock[sdl | zero]
+          |  (open('key) . zero)
+          |  ! (open('restart_global) . zero)
+          | 'scaling_lock[ sdl | zero]
+          | cleanUp] .
+
+    op example : -> VTA .
+    eq example =
+        { 'cloud[sdl(('asg)) | asg(1, 4) | request(2) | request(2) | garbage] } .
+
+--- example with one request should create one vm1, have vm3 behind the guard
+--- and vm5 behind lock and guard. then a lot of internal movement stuff should
+--- happen, the request should move into vm3 and be opened vm3 should get ticks
+--- from asg and the consume capability should go away, thus resolving the
+--- request for more requests the number of virtual machines sales according to
+--- MIN and MAX.
+endm

@@ -26,18 +26,10 @@ Maude>
 
 The Maude prompt accepts [Maude
 commands](http://maude.cs.uiuc.edu/maude2-manual/html/maude-manualch18.html),
-of which the perhaps most useful is `rew`. The following is an example of using
-the `rew` command:
+of which the perhaps most useful is `frew`. A case study is provided in [auto-scaling-case-study.maude]([auto-scaling-case-study.maude]) which can be invoked with the following:
 
 ```
-Maude> rew
-'root[ sched 1 {0, 0, 0, 'request, 'vm}
-     | tick | tick
-     | 'request[ sched  0 {0, 0, 0, empty, empty}
-                 | in('vm) . c . zero]
-     | 'vm     [ sched  1/2 {0, 0, 0, empty, empty}
-                 | open('request) . zero]]
-|= <> 2 @ 'root ~ Consume .
+Maude> load auto-scaling-case-study.maude .
+Maude> frew example .
 ```
 
-For more examples, look to the `examples.maude` file located in this directory.
