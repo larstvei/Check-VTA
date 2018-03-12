@@ -282,6 +282,7 @@ mod VTA-FORMULA is
     sort Var .
 
     ops True False : -> Formula [ctor format (r o)] .
+    op ~_ : Formula -> Formula [ctor prec 53 format (r o d)] .
     op Consume : -> Formula [ctor format (r o)] .
     op NotConsume : -> Formula [ctor format (r o)] .
     op _/\_ : Formula Formula -> Formula [comm ctor gather (E e) prec 55 format (r d d o)] .
@@ -292,14 +293,13 @@ mod VTA-FORMULA is
     op all_._ : Name Formula -> Formula [format (r d d d o)] .
     op exists_._ : Name Formula -> Formula [format (r d d d o)] .
     op (+)_ : Formula -> Formula [format (r d d d o)] .
-    op someone : Formula -> Formula .
-    op no-one : Formula -> Formula .
     op <>_@__ : Nat Name Formula -> Formula [prec 53 format (r d d d d o)] .
     op <>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
-    op <~>___ : Rat Nat Formula -> Formula [prec 53 format (r d d d o)] .
+    op _@_ : Formula Name -> Formula [format (r d d o)] .
+    op someone : Formula -> Formula .
+    op no-one : Formula -> Formula .
     op #<_ : Nat -> Formula [prec 53 format (r d o)] .
     op #>_ : Nat -> Formula [prec 53 format (r d o)] .
-    op _@_ : Formula Name -> Formula [format (r d d o)] .
 
     vars N M X Y : Name .
     vars F G : Formula .
@@ -310,6 +310,7 @@ mod VTA-FORMULA is
     op [_<-_] : Name Name -> Substitution .
 
     op __ : Formula Substitution -> Formula [prec 20] .
+    eq (~ F)[X <- N] = ~ (F[X <- N]) .
     eq M[F][X <- N] = (if (M == X) then N else M fi)[F[X <- N]] .
     eq (<> A @ M F)[X <- N] = <> A @ (if (M == X) then N else M fi) F[X <- N] .
     eq (F @ M)[X <- N] = F[X <- N] @ (if (M == X) then N else M fi) .
@@ -318,10 +319,8 @@ mod VTA-FORMULA is
     eq (all Y . F)[X <- N] = all Y . F[X <- N] .
     eq (exists Y . F)[X <- N] = exists Y . F[X <- N] .
     eq (<> R A F)[X <- N] = <> R A F[X <- N] .
-    eq (<~> R A F)[X <- N] = <~> R A F[X <- N] .
     eq (someone(F))[X <- N] = someone(F[X <- N]) .
     eq (no-one(F))[X <- N] = no-one(F[X <- N]) .
-    eq ((+) F)[X <- N] = (+) (F[X <- N]) .
     eq F[N <- X] = F [owise] .
 
     var Sc : Scheduler .
@@ -424,6 +423,7 @@ mod VTA-SATISFACTION is
 
     eq [True] : P |= True = true .
     eq [False] : P |= False = false .
+    eq [Negation] : P |= ~ F = not (P |= F) .
     eq [Conjunction] : P |= F /\ G = (P |= F) and (P |= G) .
     eq [Disjunction] : P |= F \/ G = (P |= F) or (P |= G) .
     eq [Void] : zero |= void = true .
@@ -436,15 +436,10 @@ mod VTA-SATISFACTION is
       if  Ps := siblings(P) .
     ceq [Somewhere] : P |= <> Speed S F = somewhere(Ps, Speed, S, F)
       if  Ps := sublocations(P) .
-    ceq [NotSomewhere] : P |= <~> Speed S F = not(somewhere(Ps, Speed, S, F))
-      if  Ps := sublocations(P) .
     eq [LocalAdjunct] : P |= F @ N = N[sdl | P] |= F .
 
     crl [Parallel] : P | Q |= F | G => true
       if P |= F => true /\ Q |= G => true .
-
-    --- crl [NotParallel] : P | Q |= F -|- G => true
-    ---   if P |= F => true /\ Q |= G => true .
 
     crl [Sometime] : P |= <> A @ X F => true
       if  contains(P, X) /\
@@ -462,12 +457,13 @@ mod VTA-SATISFACTION is
     eq [MoreSubs] : N[sched Speed {InN, OutN, RestN, SrvN, UnSrvN} | P]
         |= #> S  = size(merge(SrvN, UnSrvN)) > S .
 
-    --- AnyOne and NoOne are short for P |= F | True and its negation.
-    ceq [AnyOne] : P |= someone(F) = anysat(Ps, F)
-        if  Ps := siblings(P) .
+    --- SomeOne and NoOne are short for P |= F | True and its negation.
+    ceq [SomeOne] : P |= someone(F) = anysat(Ps, F)
+      if  Ps := siblings(P) .
     ceq [NoOne] : P |= no-one(F) = not(anysat(Ps, F))
-            if  Ps := siblings(P) .
+      if  Ps := siblings(P) .
 
+    rl [Sometime-else] : P |= F => false .
 
     var Ps : Servables .
     vars R : Rat .
@@ -492,20 +488,18 @@ mod VTA-SATISFACTION is
     eq anysat((P : Ps), F) = (P |= F) or anysat(Ps, F) .
     eq anysat(none, F) = false [owise] .
 
+
 endm
 
 view Formula from TRIV to VTA-FORMULA is
     sort Elt to Formula .
 endv
 
-mod RESOURCE-AWARE is
+mod REPLICATION is
     pr VTA-SATISFACTION .
     pr SET{Formula} .
     pr CONVERSION .
     pr COUNTER .
-
-    op {_} : VTA -> VTA .
-    op _?_ : Formula VTA -> VTA [frozen (2) format (d ni d d)] .
 
     vars P Q R : VTA .
     vars N M Y X : Name .
@@ -521,26 +515,7 @@ mod RESOURCE-AWARE is
     vars Speed : Rat .
     vars Served Unserved : Servables .
 
-    op findGuards : VTA -> Set{Formula} .
-    eq findGuards(G ? P) = G .
-    ceq findGuards(P | Q) = union(findGuards(P), findGuards(Q)) if P =/= zero /\ Q =/= zero .
-    eq findGuards(N[Sdl | P]) = findGuards(P) .
-    eq findGuards(P) = empty [owise] .
-
-    op removeGuard : VTA Formula -> VTA .
-    eq removeGuard(N[sched Speed {In, Out, Rest, Served, Unserved} | G ? P | Q], G) =
-        N[sched Speed {In, Out, Rest, Served, merge(Unserved, barb(P))} | P | Q] .
-    ceq removeGuard(F ? P, G) = F ? P if F =/= G .
-    ceq removeGuard(P | Q, G) = removeGuard(P, G) | removeGuard(Q, G) if P =/= zero /\ Q =/= zero .
-    eq removeGuard(N[Sdl | P], G) = N[Sdl | removeGuard(P, G)] .
-    eq removeGuard(P, G) =  P [owise] .
-
-    op removeGuardedProcess : VTA Formula -> VTA .
-    eq removeGuardedProcess(G ? P, G) = zero .
-    ceq removeGuardedProcess(F ? P, G) = F ? P if F =/= G .
-    ceq removeGuardedProcess(P | Q, G) = removeGuardedProcess(P, G) | removeGuardedProcess(Q, G) if P =/= zero /\ Q =/= zero .
-    eq removeGuardedProcess(N[Sdl | P], G) = N[Sdl | removeGuardedProcess(P, G)] .
-    eq removeGuardedProcess(P, G) = P [owise] .
+   op {_} : VTA -> VTA .
 
     op removeNumber : String -> String .
     eq removeNumber(S) = removeNumber1(0, S) .
@@ -566,13 +541,13 @@ mod RESOURCE-AWARE is
     eq removeNumbers(Ca . P) = removeNumbers(Ca) . removeNumbers(P) .
     eq removeNumbers(N[Sdl | P]) = removeNumber(N)[Sdl | removeNumbers(P)] .
     ceq removeNumbers(P | Q) = removeNumbers(P) | removeNumbers(Q) if P =/= zero and Q =/= zero .
-    eq removeNumbers(G ? P) = removeNumbers(G) ? removeNumbers(P) .
     eq removeNumbers(! P) = ! removeNumbers(P) .
-    eq removeNumbers(!< Names > P) = !< Names > removeNumbers(P) .
+    eq removeNumbers(!< Names, I > P) = !< Names, I > removeNumbers(P) .
 
     op removeNumbers : Formula -> Formula .
     eq removeNumbers(True) = True .
     eq removeNumbers(False) = False .
+    eq removeNumbers(~ F) = ~ removeNumbers(F) .
     eq removeNumbers(Consume) = Consume .
     eq removeNumbers(NotConsume) = NotConsume .
     eq removeNumbers(M[F]) = removeNumber(M)[removeNumbers(F)] .
@@ -584,15 +559,17 @@ mod RESOURCE-AWARE is
     eq removeNumbers(all Y . F) = all Y . removeNumbers(F) .
     eq removeNumbers(exists Y . F) = exists Y . removeNumbers(F) .
     eq removeNumbers(<> O I F) = <> O I removeNumbers(F) .
-    eq removeNumbers(<~> O I F) = <~> O I removeNumbers(F) .
     eq removeNumbers((+) F) = (+) removeNumbers(F) .
     eq removeNumbers(someone(F)) = someone(removeNumbers(F)) .
     eq removeNumbers(no-one(F)) = no-one(removeNumbers(F)) .
     eq removeNumbers(#< I) = #< I .
     eq removeNumbers(#> I) = #> I .
 
+    op _privatecontains_ : VTA VTA -> Bool .
+    eq P privatecontains Q = removeNumbers(P) contains1 removeNumbers(Q) .
+
     op _contains_ : VTA VTA -> Bool .
-    eq P contains Q = removeNumbers(P) contains1 removeNumbers(Q) .
+    eq P contains Q = P contains1 Q .
 
     op _contains1_ : VTA VTA -> Bool .
     ceq (Q | R) contains1 P = Q contains1 P or R contains1 P if Q =/= zero and R =/= zero .
@@ -612,6 +589,7 @@ mod RESOURCE-AWARE is
     op substitute1 : Name Formula -> Formula .
     eq substitute1(N, True) = True .
     eq substitute1(N, False) = False .
+    eq substitute1(N, ~ F) = ~ substitute1(N, F) .
     eq substitute1(N, Consume) = Consume .
     eq substitute1(N, NotConsume) = NotConsume .
     eq substitute1(N, M[F]) = (if (removeNumber(N) == M) then N else M fi)[substitute1(N, F)] .
@@ -623,45 +601,43 @@ mod RESOURCE-AWARE is
     eq substitute1(N, all Y . F) = all Y . substitute1(N, F) .
     eq substitute1(N, exists Y . F) = exists Y . substitute1(N, F) .
     eq substitute1(N, <> O I F) = <> O I substitute1(N, F) .
-    eq substitute1(N, <~> O I F) = <~> O I substitute1(N, F) .
     eq substitute1(N, (+) F) = (+) substitute1(N, F) .
     eq substitute1(N, someone(F)) = someone(substitute1(N, F)) .
     eq substitute1(N, no-one(F)) = no-one(substitute1(N, F)) .
     eq substitute1(N, #< I) = #< I .
     eq substitute1(N, #> I) = #> I .
 
+
     op substitute1 : Name VTA -> VTA .
     eq substitute1(N, zero) = zero .
     eq substitute1(N, tick) = tick .
     eq substitute1(N, Ca . P) = substitute1(N, Ca) . substitute1(N, P) .
     eq substitute1(N, M[Sdl | P]) = if removeNumber(N) == M then N[Sdl | substitute1(N, P)] else M[Sdl | substitute1(N, P)] fi .
-    eq substitute1(N, G ? P) = substitute1(N, G) ? substitute1(N, P) .
     eq substitute1(N, ! P) = ! substitute1(N, P) .
-    eq substitute1(N, !< Names > P) = !< Names > substitute1(N, P) .
+    eq substitute1(N, !< Names, I > P) = !< Names, I > substitute1(N, P) .
     ceq substitute1(N, P | Q) = substitute1(N, P) | substitute1(N, Q) if P =/= zero and Q =/= zero .
 
     --- Additional cases for consumptions
-    eq consumptions(G ? P) = consumptions(P) .
     eq consumptions(! P) = consumptions(P) .
-    eq consumptions(!< Names > P) = consumptions(P) .
+    eq consumptions(!< Names, I > P) = consumptions(P) .
 
     --- Additional cases for names
     eq names(! P) =  names(P) .
-    eq names(!< Names > P) =  removeAll(names(P), Names) .
-    eq names(G ? P) =  none .
+    eq names(!< Names, I > P) =  removeAll(names(P), Names) .
 
     var Names : Servables .
     var PrivateNames : [Servables] .
 
-    op makePrivateName : Name -> Name .
-    eq makePrivateName(N) = qid(string(N) + string(counter, 10)) .
+    op makePrivateName : Name Nat -> Name .
+    eq makePrivateName(N, I) = qid(string(N) + string(I, 10)) .
 
-    op makePrivateNames : Servables -> Servables .
-    eq makePrivateNames(none) = none .
-    eq makePrivateNames((N : Names)) = makePrivateName(N) : makePrivateNames(Names) .
+    op makePrivateNames : Servables Nat -> Servables .
+    eq makePrivateNames(none, I) = none .
+    eq makePrivateNames((N : Names), I) =
+        makePrivateName(N, I) : makePrivateNames(Names, I) .
 
     op !_ : VTA -> VTA .
-    op !<_>_ : Servables VTA -> VTA .
+    op !<_,_>_ : Servables Nat VTA -> VTA .
 
     crl [Replication] : { ! P | Q } => { ! P | P | Q } if not(Q contains P) .
 
@@ -672,19 +648,223 @@ mod RESOURCE-AWARE is
       if not(Q contains P) .
 
     crl [PrivateReplication] :
-        { !< Names > P | Q }
+        { !< Names, I > P | Q }
       =>
-        { !< Names > P | substitute(PrivateNames, P) | Q }
-      if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
+        { !< Names, s(I) > P | substitute(PrivateNames, P) | Q }
+      if not(Q privatecontains P) /\ PrivateNames := makePrivateNames(Names, I) .
 
     crl [PrivateAmbientReplication] :
-        N[sched Speed {In, Out, Rest, Served, Unserved}| !< Names > P | Q]
+        N[sched Speed {In, Out, Rest, Served, Unserved}| !< Names, I > P | Q]
       =>
         N[sched Speed {In, Out, Rest, Served, merge(Unserved, barb(P))}
-          | !< Names > P | substitute(PrivateNames, P) | Q]
-      if not(Q contains P) /\ PrivateNames := makePrivateNames(Names) .
+          | !< Names, s(I) > P | substitute(PrivateNames, P) | Q]
+      if not(Q privatecontains P) /\ PrivateNames := makePrivateNames(Names, I) .
 
-    crl [RemoveGuard] : { P } => { removeGuard(P, G) }
-      if  G, Gs := findGuards(P) /\
-          removeGuardedProcess(P, G) |= G => true .
 endm
+
+mod CLOUD-LIBRARY is
+    pr REPLICATION .
+    pr RAT .
+    pr NAT .
+    pr LIST{Rat} .
+
+    vars P : VTA .
+    vars I K L : Nat .
+    vars Speed : Rat .
+    vars N X Y : Name .
+    vars Ns : Servables .
+    vars Rs : List{Rat} .
+
+    --- network
+    --- cloud
+
+    op time-slices : Nat -> VTA .
+    eq time-slices(0) = zero .
+    eq time-slices(s K) = tick | time-slices(K) .
+
+    op consumes : Nat -> VTA .
+    eq consumes(0) = 'done[sdl | zero] .
+    eq consumes(s K) = c . consumes(K) .
+
+    --- applications need to be executed, need computation
+    --- data needs to be stored, needs memory
+
+    --- to speed up the model-checking
+    --- we omit the movement of the applications and data packages into the cloud
+    --- and start with a configuration where they are already inside.
+
+    op application : Nat -> VTA .
+    eq application(K) =
+        'app[sdl |  open('move) . zero | consumes(K)] .
+
+    op data : Nat -> VTA .
+    eq data(K) =
+        'app[sdl |  open('move) . zero
+          | 'data[sched 1 {0, 0, 0, none, none} |  consumes(K) | open('done) .  zero ] ] .
+
+
+    --- create K apps each requesting L resources, or K data sets
+
+    op createApps : Nat Nat -> VTA .
+    eq createApps(s K , L ) = application(L) | createApps(K , L) .
+    eq createApps(0 , L) = zero .
+
+    op createDatas : Nat Nat  -> VTA .
+    eq createDatas(s K , L ) = data(L ) | createDatas(K, L) .
+    eq createDatas(0 , L ) = zero .
+
+    --- ROUND-ROBIN Load Balancing
+    --- VMs are predefined and get applications in a round-robin way
+
+    op round-robin-lb : Servables -> VTA .
+    eq round-robin-lb(Ns) = ! (open('round_lock) . balance(Ns)) .
+
+    op balance : Servables -> VTA .
+    eq balance((N : Ns)) = open('load_balancer_lock) . (moveTo(N) | balance(Ns)) .
+    eq balance(none) = 'round_lock[sdl | zero] .
+
+    op moveTo : Name -> VTA .
+    eq moveTo(X) = 'move[sdl |  in('app) . in(X) . 'load_balancer_lock[sdl | out(X) . zero]] .
+
+    op createRRVMs : Servables List{Rat} -> VTA .
+    eq createRRVMs((N : Ns) , (Speed Rs) ) = virtualMachineRR(N , Speed) | createRRVMs(Ns , Rs) .
+    eq createRRVMs(none , nil) = zero .
+
+    op virtualMachineRR :  Name Rat -> VTA .
+    eq virtualMachineRR(X , Speed) =
+        X[sched Speed {0 , 0 , 0 , none, none}
+          | ! (open('app) .  open('done) . zero) ] .
+
+    op round-robin : Servables List{Rat} -> VTA .
+    eq round-robin(Ns, Rs)=
+        round-robin-lb(Ns)
+        | 'round_lock[sdl | zero]
+        | createRRVMs(Ns, Rs)
+        | 'load_balancer_lock[sdl | zero] .
+
+    --- VOLUNTEERING Virtual Machines
+    --- VMs are predefined and report to LB that they are free
+
+    op volunteer : Name -> VTA .
+    eq volunteer(X) =
+        'volunteer[sdl | out (X) . in('lb) . 'move[sdl
+            | out('lb) . in('app) . in(X) . 'load_balancer_lock[sdl
+              | out(X) .  in('lb) . open('volunteer) . open('load_balancer_lock) . zero]]] .
+
+    op load-balancer : -> VTA .
+    eq load-balancer = 'lb[ sdl | open('volunteer) . open('load_balancer_lock) . zero ] .
+
+    op virtualMachineV :  Name Rat -> VTA .
+    eq virtualMachineV(X, Speed) =
+        X[sched Speed {0, 0, 0, none, none}
+          | volunteer(X)
+          | ! (open('app) . open('done) . volunteer(X)) ] .
+
+    op createVVMs : Servables List{Rat} -> VTA .
+    eq createVVMs((N : Ns), (Speed Rs) ) = virtualMachineV(N, Speed) | createVVMs(Ns, Rs) .
+    eq createVVMs(none , nil) = zero .
+
+    op volunteering : Servables List{Rat}  -> VTA .
+    eq volunteering(Ns, Rs) =  createVVMs(Ns, Rs)  | load-balancer .
+
+    --- AUTO-SCALING
+    --- for each application a new VM is created
+    --- the VM deletes itself after the application is done
+
+    op scaling : Rat -> VTA .
+    eq scaling(Speed) =
+        !< 'vm, 0 >  (open('scaling_lock) . ('move[sdl
+              | in('app) . (open('move) . zero | 'detected[sdl | out('app) . zero])]
+            | open('detected) . virtualMachineAS('vm, Speed))) .
+
+    op virtualMachineAS :  Name Rat -> VTA .
+    eq virtualMachineAS(X, Speed) =
+        X[sched Speed {0, 0, 0, none, none}
+          | 'move[sdl |  out(X) . in('app) . in(X) . 'scaling_lock[sdl | out(X) . zero]]
+          | open('app) . zero
+          | open('done) . in('garbage) . zero] .
+
+    op garbage : -> VTA .
+    eq garbage = 'garbage[sdl | zero ] .
+
+    op auto-scaling : Rat -> VTA .
+    eq auto-scaling(Speed) = garbage | scaling(Speed) | 'scaling_lock[sdl | zero] .
+
+    --- SPECIAL DATA
+
+    op specialData : Nat -> VTA .
+    eq specialData(K) =
+        'app[sdl | open('move) . zero
+          | 'special_data[sched 1 {0, 0, 0, none, none} |  consumes(K)
+            | open('done) .  zero ]] .
+
+    --- FORMULAS
+
+    --- Are there less or equal to K subambients in the cloud the end?
+    op F1-orig : Nat -> Formula .
+    eq F1-orig(K) =
+        <> 0 @ 'network 'network[~ Consume /\ (<> 0 K ('isCloud[True] | True))] .
+
+    --- F1 with "cheat-formulas" for faster computation:
+    op F1 : Nat -> Formula .
+    eq F1(K) = <> 0 @ 'network 'network[~ Consume /\ someone('cloud[True] /\ #< K)] .
+
+    --- Are less than K resources needed?
+    op F2 : Nat -> Formula .
+    eq F2(K) = <> K @ 'cloud 'network[~ Consume] .
+
+    ---How many resources until special one is done?
+    op F3-orig : Nat -> Formula .
+    eq F3-orig(K) = <> K @ 'cloud 'network['cloud[(+) ('special_data[~ Consume] | True)]] .
+
+    ---F3 with cheat-formulas for faster computation:
+    op F3 : Nat -> Formula .
+    eq F3(K) = <> K @ 'cloud 'network['cloud[ (+) someone('special_data[~ Consume])]] .
+
+    --- EXAMPLES
+    op example : VTA -> VTA .
+    eq example(P) =
+        'network[sdl | 'cloud[sched 1 {0, 0, 0, none, ('vm0 : 'vm1)}
+            | P
+            | time-slices(5)
+            | createApps(1 , 1)
+            | specialData(1)]] .
+
+    op exampleRR : -> VTA .
+    eq exampleRR = example(round-robin(('vm0 : 'vm1), (1 1))) .
+
+    op exampleV : -> VTA .
+    eq exampleV  = example(volunteering(('vm0 : 'vm1), (1 1))) .
+
+    op exampleAS : -> VTA .
+    eq exampleAS = example(auto-scaling(1)) .
+endm
+
+
+--- ----------- ROUND ROBIN LOAD BALANCING EXAMPLES
+
+--- MINIMAL EX: 2VM, 1A, 1SD ---  4min, 5min, 1min
+rew exampleRR |= F1(2) .
+
+rew exampleRR |= F2(2) .
+
+rew exampleRR |= F3(1) .
+
+
+--- ----------- VOLUNTEERING EXAMPLES
+
+--- MINIMAL EX: 2VM, 1A, 1SD --- 4min, 4 min, 1min
+rew exampleV |= F1(2) .
+
+rew exampleV |= F2(2) .
+
+rew exampleV |= F3(1) .
+
+--- ----------- AUTO SCALING EXAMPLES
+
+--- MINIMAL EX: 2VM, 1A , 1SD --- 10min , 5min, 1min
+rew exampleAS |= F1(2) .
+
+rew exampleAS |= F2(2) .
+
+rew exampleAS |= F3(1) .
