@@ -822,21 +822,21 @@ mod CLOUD-LIBRARY is
     eq F3(K) = <> K @ 'cloud 'system['cloud[ (+) someone('special_data[~ Consume])]] .
 
     --- EXAMPLES
-    op example : VTA -> VTA .
-    eq example(P) =
-        'system[sdl | 'cloud[sched 1 {0, 0, 0, none, ('vm0 : 'vm1)}
+    op example : VTA Servables -> VTA .
+    eq example(P, Ns) =
+        'system[sdl | 'cloud[sched 1 {0, 0, 0, none, Ns}
             | P
             | time-slices(5)
             | createApps(1 , 1)
             | observable(1)]] .
 
     op exampleRR : -> VTA .
-    eq exampleRR = example(round-robin(('vm0 : 'vm1), (1 1))) .
+    eq exampleRR = example(round-robin(('vm0 : 'vm1), (1 1)), ('vm0 : 'vm1)) .
 
     op exampleV : -> VTA .
-    eq exampleV  = example(volunteering(('vm0 : 'vm1), (1 1))) .
+    eq exampleV  = example(volunteering(('vm0 : 'vm1), (1 1)), ('vm0 : 'vm1)) .
 
     op exampleAS : -> VTA .
-    eq exampleAS = example(auto-scaling(1)) .
+    eq exampleAS = example(auto-scaling(1), none) .
 endm
 
