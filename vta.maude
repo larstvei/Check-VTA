@@ -792,8 +792,8 @@ mod CLOUD-LIBRARY is
 
     --- SPECIAL DATA
 
-    op specialData : Nat -> VTA .
-    eq specialData(K) =
+    op observable : Nat -> VTA .
+    eq observable(K) =
         'app[sdl | open('move) . zero
           | 'special_data[sched 1 {0, 0, 0, none, none} |  consumes(K)
             | open('done) .  zero ]] .
@@ -828,7 +828,7 @@ mod CLOUD-LIBRARY is
             | P
             | time-slices(5)
             | createApps(1 , 1)
-            | specialData(1)]] .
+            | observable(1)]] .
 
     op exampleRR : -> VTA .
     eq exampleRR = example(round-robin(('vm0 : 'vm1), (1 1))) .
