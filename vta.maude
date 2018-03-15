@@ -675,7 +675,7 @@ mod CLOUD-LIBRARY is
     vars Ns : Servables .
     vars Rs : List{Rat} .
 
-    --- network
+    --- system
     --- cloud
 
     op time-slices : Nat -> VTA .
@@ -803,28 +803,28 @@ mod CLOUD-LIBRARY is
     --- Are there less or equal to K subambients in the cloud the end?
     op F1-orig : Nat -> Formula .
     eq F1-orig(K) =
-        <> 0 @ 'network 'network[~ Consume /\ (<> 0 K ('isCloud[True] | True))] .
+        <> 0 @ 'system 'system[~ Consume /\ (<> 0 K ('isCloud[True] | True))] .
 
     --- F1 with "cheat-formulas" for faster computation:
     op F1 : Nat -> Formula .
-    eq F1(K) = <> 0 @ 'network 'network[~ Consume /\ someone('cloud[True] /\ #< K)] .
+    eq F1(K) = <> 0 @ 'system 'system[~ Consume /\ someone('cloud[True] /\ #< K)] .
 
     --- Are less than K resources needed?
     op F2 : Nat -> Formula .
-    eq F2(K) = <> K @ 'cloud 'network[~ Consume] .
+    eq F2(K) = <> K @ 'cloud 'system[~ Consume] .
 
     ---How many resources until special one is done?
     op F3-orig : Nat -> Formula .
-    eq F3-orig(K) = <> K @ 'cloud 'network['cloud[(+) ('special_data[~ Consume] | True)]] .
+    eq F3-orig(K) = <> K @ 'cloud 'system['cloud[(+) ('special_data[~ Consume] | True)]] .
 
     ---F3 with cheat-formulas for faster computation:
     op F3 : Nat -> Formula .
-    eq F3(K) = <> K @ 'cloud 'network['cloud[ (+) someone('special_data[~ Consume])]] .
+    eq F3(K) = <> K @ 'cloud 'system['cloud[ (+) someone('special_data[~ Consume])]] .
 
     --- EXAMPLES
     op example : VTA -> VTA .
     eq example(P) =
-        'network[sdl | 'cloud[sched 1 {0, 0, 0, none, ('vm0 : 'vm1)}
+        'system[sdl | 'cloud[sched 1 {0, 0, 0, none, ('vm0 : 'vm1)}
             | P
             | time-slices(5)
             | createApps(1 , 1)
@@ -840,31 +840,3 @@ mod CLOUD-LIBRARY is
     eq exampleAS = example(auto-scaling(1)) .
 endm
 
-
---- ----------- ROUND ROBIN LOAD BALANCING EXAMPLES
-
---- MINIMAL EX: 2VM, 1A, 1SD ---  4min, 5min, 1min
-rew exampleRR |= F1(2) .
-
-rew exampleRR |= F2(2) .
-
-rew exampleRR |= F3(1) .
-
-
---- ----------- VOLUNTEERING EXAMPLES
-
---- MINIMAL EX: 2VM, 1A, 1SD --- 4min, 4 min, 1min
-rew exampleV |= F1(2) .
-
-rew exampleV |= F2(2) .
-
-rew exampleV |= F3(1) .
-
---- ----------- AUTO SCALING EXAMPLES
-
---- MINIMAL EX: 2VM, 1A , 1SD --- 10min , 5min, 1min
-rew exampleAS |= F1(2) .
-
-rew exampleAS |= F2(2) .
-
-rew exampleAS |= F3(1) .
