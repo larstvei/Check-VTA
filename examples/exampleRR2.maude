@@ -1,0 +1,3 @@
+load vta.maude
+rew exampleRR |= F2(2) .
+q .

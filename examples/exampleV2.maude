@@ -1,0 +1,3 @@
+load vta.maude
+rew exampleV |= F2(2) .
+q .
