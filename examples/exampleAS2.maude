@@ -1,3 +1,3 @@
-load vta.maude
+load ../vta.maude
 rew exampleAS |= F2(2) .
 q .
