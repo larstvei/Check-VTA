@@ -795,12 +795,13 @@ mod CLOUD-LIBRARY is
     op observable : Nat -> VTA .
     eq observable(K) =
         'app[sdl | open('move) . zero
-          | 'special_data[sched 1 {0, 0, 0, none, none} |  consumes(K)
+          | 'observable[sched 1 {0, 0, 0, none, none} |  consumes(K)
             | open('done) .  zero ]] .
 
     --- FORMULAS
 
-    --- Are there less or equal to K subambients in the cloud the end?
+    --- Are there less or equal to K virtual machines in the cloud the end?
+    --- needs 'isCloud[] marker ambient to work
     op F1-orig : Nat -> Formula .
     eq F1-orig(K) =
         <> 0 @ 'system 'system[~ Consume /\ (<> 0 K ('isCloud[True] | True))] .
@@ -815,13 +816,13 @@ mod CLOUD-LIBRARY is
 
     ---How many resources until special one is done?
     op F3-orig : Nat -> Formula .
-    eq F3-orig(K) = <> K @ 'cloud 'system['cloud[(+) ('special_data[~ Consume] | True)]] .
+    eq F3-orig(K) = <> K @ 'cloud 'system['cloud[(+) ('observable[~ Consume] | True)]] .
 
-    ---F3 with cheat-formulas for faster computation:
+    ---F3 with "cheat-formulas" for faster computation:
     op F3 : Nat -> Formula .
-    eq F3(K) = <> K @ 'cloud 'system['cloud[ (+) someone('special_data[~ Consume])]] .
+    eq F3(K) = <> K @ 'cloud 'system['cloud[ (+) someone('observable[~ Consume])]] .
 
-    --- EXAMPLES
+    --- EXAMPLES (without 'isCloud[] marker ambient )
     op example : VTA Servables -> VTA .
     eq example(P, Ns) =
         'system[sdl | 'cloud[sched 1 {0, 0, 0, none, Ns}
@@ -839,4 +840,3 @@ mod CLOUD-LIBRARY is
     op exampleAS : -> VTA .
     eq exampleAS = example(auto-scaling(1), none) .
 endm
-
