@@ -26,7 +26,7 @@ Maude>
 
 The Maude prompt accepts [Maude
 commands](http://maude.cs.uiuc.edu/maude2-manual/html/maude-manualch18.html),
-of which the perhaps most useful are `frew`.
+of which the perhaps most useful are `rew`.
 
 
 We provide a number of examples in the [examples](./examples) directory, all on
@@ -38,9 +38,11 @@ rew P |= F .
 q .
 ```
 
-where `P` is a virtually timed ambient and `F` is a formula. We provide a
-script for running several analyses in parallel. It takes a number of maude
-files as argument, and places the output in a `result` directory.
+It loads the [vta](./vta.maude) calculus and modal logic, modelchecks a
+virtually timed ambient `P` against a formula `F` and finally quits. We provide
+a script `tester.sh` for running several analyses in parallel. It takes a
+number of maude files as argument, and places the output in a `result`
+directory.
 
 If one wants to run all of the provided examples, it can be achieved with the
 following:
