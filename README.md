@@ -26,10 +26,25 @@ Maude>
 
 The Maude prompt accepts [Maude
 commands](http://maude.cs.uiuc.edu/maude2-manual/html/maude-manualch18.html),
-of which the perhaps most useful is `frew`. A case study is provided in [auto-scaling-case-study.maude](./auto-scaling-case-study.maude) which can be invoked with the following:
+of which the perhaps most useful are `frew`.
+
+
+We provide a number of examples in the [examples](./examples) directory, all on
+the form:
 
 ```
-Maude> load auto-scaling-case-study.maude .
-Maude> frew example .
+load ../vta.maude
+rew P |= F .
+q .
 ```
 
+where `P` is a virtually timed ambient and `F` is a formula. We provide a
+script for running several analyses in parallel. It takes a number of maude
+files as argument, and places the output in a `result` directory.
+
+If one wants to run all of the provided examples, it can be achieved with the
+following:
+
+```sh
+./tester.sh examples/*.maude
+```
