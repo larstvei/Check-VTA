@@ -686,35 +686,35 @@ mod CLOUD-LIBRARY is
     eq consumes(0) = 'done[sdl | zero] .
     eq consumes(s K) = c . consumes(K) .
 
-    --- applications need to be executed, need computation
+    --- tasks need to be executed, need computation
     --- data needs to be stored, needs memory
 
     --- to speed up the model-checking
-    --- we omit the movement of the applications and data packages into the cloud
+    --- we omit the movement of the tasks and data packages into the cloud
     --- and start with a configuration where they are already inside.
 
-    op application : Nat -> VTA .
-    eq application(K) =
-        'app[sdl |  open('move) . zero | consumes(K)] .
+    op task : Nat -> VTA .
+    eq task(K) =
+        'task[sdl | open('move) . zero | consumes(K)] .
 
     op data : Nat -> VTA .
     eq data(K) =
-        'app[sdl |  open('move) . zero
-          | 'data[sched 1 {0, 0, 0, none, none} |  consumes(K) | open('done) .  zero ] ] .
+        'task[sdl | open('move) . zero
+          | 'data[sched 1 {0, 0, 0, none, none} | consumes(K) | open('done) .  zero]] .
 
 
-    --- create K apps each requesting L resources, or K data sets
+    --- create K tasks each requesting L resources, or K data sets
 
-    op createApps : Nat Nat -> VTA .
-    eq createApps(s K , L ) = application(L) | createApps(K , L) .
-    eq createApps(0 , L) = zero .
+    op createTasks : Nat Nat -> VTA .
+    eq createTasks(s K, L) = task(L) | createTasks(K, L) .
+    eq createTasks(0, L) = zero .
 
-    op createDatas : Nat Nat  -> VTA .
-    eq createDatas(s K , L ) = data(L ) | createDatas(K, L) .
-    eq createDatas(0 , L ) = zero .
+    op createDatas : Nat Nat -> VTA .
+    eq createDatas(s K, L) = data(L) | createDatas(K, L) .
+    eq createDatas(0, L) = zero .
 
     --- ROUND-ROBIN Load Balancing
-    --- VMs are predefined and get applications in a round-robin way
+    --- VMs are predefined and get tasks in a round-robin way
 
     op round-robin-lb : Servables -> VTA .
     eq round-robin-lb(Ns) = ! (open('round_lock) . balance(Ns)) .
@@ -724,7 +724,7 @@ mod CLOUD-LIBRARY is
     eq balance(none) = 'round_lock[sdl | zero] .
 
     op moveTo : Name -> VTA .
-    eq moveTo(X) = 'move[sdl |  in('app) . in(X) . 'load_balancer_lock[sdl | out(X) . zero]] .
+    eq moveTo(X) = 'move[sdl |  in('task) . in(X) . 'load_balancer_lock[sdl | out(X) . zero]] .
 
     op createRRVMs : Servables List{Rat} -> VTA .
     eq createRRVMs((N : Ns) , (Speed Rs) ) = virtualMachineRR(N , Speed) | createRRVMs(Ns , Rs) .
@@ -733,7 +733,7 @@ mod CLOUD-LIBRARY is
     op virtualMachineRR :  Name Rat -> VTA .
     eq virtualMachineRR(X , Speed) =
         X[sched Speed {0 , 0 , 0 , none, none}
-          | ! (open('app) .  open('done) . zero) ] .
+          | ! (open('task) .  open('done) . zero) ] .
 
     op round-robin : Servables List{Rat} -> VTA .
     eq round-robin(Ns, Rs)=
@@ -742,46 +742,46 @@ mod CLOUD-LIBRARY is
         | createRRVMs(Ns, Rs)
         | 'load_balancer_lock[sdl | zero] .
 
-    --- VOLUNTEERING Virtual Machines
+    --- IDLE Virtual Machines
     --- VMs are predefined and report to LB that they are free
 
-    op volunteer : Name -> VTA .
-    eq volunteer(X) =
-        'volunteer[sdl | out (X) . in('lb) . 'move[sdl
-            | out('lb) . in('app) . in(X) . 'load_balancer_lock[sdl
-              | out(X) .  in('lb) . open('volunteer) . open('load_balancer_lock) . zero]]] .
+    op idle : Name -> VTA .
+    eq idle(X) =
+        'idle[sdl | out (X) . in('lb) . 'move[sdl
+            | out('lb) . in('task) . in(X) . 'load_balancer_lock[sdl
+              | out(X) .  in('lb) . open('idle) . open('load_balancer_lock) . zero]]] .
 
     op load-balancer : -> VTA .
-    eq load-balancer = 'lb[ sdl | open('volunteer) . open('load_balancer_lock) . zero ] .
+    eq load-balancer = 'lb[ sdl | open('idle) . open('load_balancer_lock) . zero ] .
 
-    op virtualMachineV :  Name Rat -> VTA .
-    eq virtualMachineV(X, Speed) =
+    op virtualMachineI :  Name Rat -> VTA .
+    eq virtualMachineI(X, Speed) =
         X[sched Speed {0, 0, 0, none, none}
-          | volunteer(X)
-          | ! (open('app) . open('done) . volunteer(X)) ] .
+          | idle(X)
+          | ! (open('task) . open('done) . idle(X)) ] .
 
-    op createVVMs : Servables List{Rat} -> VTA .
-    eq createVVMs((N : Ns), (Speed Rs) ) = virtualMachineV(N, Speed) | createVVMs(Ns, Rs) .
-    eq createVVMs(none , nil) = zero .
+    op createIVMs : Servables List{Rat} -> VTA .
+    eq createIVMs((N : Ns), (Speed Rs) ) = virtualMachineI(N, Speed) | createIVMs(Ns, Rs) .
+    eq createIVMs(none , nil) = zero .
 
-    op volunteering : Servables List{Rat}  -> VTA .
-    eq volunteering(Ns, Rs) =  createVVMs(Ns, Rs)  | load-balancer .
+    op idling : Servables List{Rat}  -> VTA .
+    eq idling(Ns, Rs) =  createIVMs(Ns, Rs)  | load-balancer .
 
     --- AUTO-SCALING
-    --- for each application a new VM is created
-    --- the VM deletes itself after the application is done
+    --- for each task a new VM is created
+    --- the VM deletes itself after the task is done
 
     op scaling : Rat -> VTA .
     eq scaling(Speed) =
         !< 'vm, 0 >  (open('scaling_lock) . ('move[sdl
-              | in('app) . (open('move) . zero | 'detected[sdl | out('app) . zero])]
+              | in('task) . (open('move) . zero | 'detected[sdl | out('task) . zero])]
             | open('detected) . virtualMachineAS('vm, Speed))) .
 
     op virtualMachineAS :  Name Rat -> VTA .
     eq virtualMachineAS(X, Speed) =
         X[sched Speed {0, 0, 0, none, none}
-          | 'move[sdl |  out(X) . in('app) . in(X) . 'scaling_lock[sdl | out(X) . zero]]
-          | open('app) . zero
+          | 'move[sdl |  out(X) . in('task) . in(X) . 'scaling_lock[sdl | out(X) . zero]]
+          | open('task) . zero
           | open('done) . in('garbage) . zero] .
 
     op garbage : -> VTA .
@@ -794,7 +794,7 @@ mod CLOUD-LIBRARY is
 
     op observable : Nat -> VTA .
     eq observable(K) =
-        'app[sdl | open('move) . zero
+        'task[sdl | open('move) . zero
           | 'observable[sched 1 {0, 0, 0, none, none} |  consumes(K)
             | open('done) .  zero ]] .
 
@@ -828,14 +828,14 @@ mod CLOUD-LIBRARY is
         'system[sdl | 'cloud[sched 1 {0, 0, 0, none, Ns}
             | P
             | time-slices(5)
-            | createApps(1 , 1)
+            | createTasks(1 , 1)
             | observable(1)]] .
 
     op exampleRR : -> VTA .
     eq exampleRR = example(round-robin(('vm0 : 'vm1), (1 1)), ('vm0 : 'vm1)) .
 
     op exampleV : -> VTA .
-    eq exampleV  = example(volunteering(('vm0 : 'vm1), (1 1)), ('vm0 : 'vm1)) .
+    eq exampleV  = example(idling(('vm0 : 'vm1), (1 1)), ('vm0 : 'vm1)) .
 
     op exampleAS : -> VTA .
     eq exampleAS = example(auto-scaling(1), none) .
